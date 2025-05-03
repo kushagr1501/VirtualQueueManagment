@@ -6,8 +6,6 @@
 
 QueueMaster is the digital solution to India's legendary queue problems. Whether you're a frustrated customer tired of people cutting lines or a business owner struggling to manage crowds, QueueMaster transforms chaos into order with a simple, effective system.
 
-![QueueMaster Banner](https://via.placeholder.com/800x200)
-
 ## 🧠 Why QueueMaster?
 
 In India, we queue for everything: doctor appointments, government offices, banks etcc. Yet the system remains chaotic, frustrating, and inefficient.
