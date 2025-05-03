@@ -88,7 +88,7 @@ QueueMaster solves this with:
 
 Clone the repository:
 ```bash
-git clone https://github.com/yourusername/QueueMaster.git
+[git clone https://github.com/yourusername/QueueMaster.git](https://github.com/kushagr1501/VirtualQueueManagment.git)
 cd QueueMaster
 ```
 
