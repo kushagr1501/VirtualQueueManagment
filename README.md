@@ -44,7 +44,7 @@ QueueMaster solves this with:
 
 ### For Customers
 1. Open QueueMaster → Select "Customer"
-2. Choose a location (salon, clinic, etc.)
+2. Choose a location (clinic, etc.)
 3. Select the specific queue you need
 4. Receive your position number and verification code
 5. Show and verify your code  when called to the required place  - no more confusion!
@@ -88,20 +88,20 @@ QueueMaster solves this with:
 
 Clone the repository:
 ```bash
-[git clone https://github.com/yourusername/QueueMaster.git](https://github.com/kushagr1501/VirtualQueueManagment.git)
-cd QueueMaster
+[git clone https://github.com/kushagr1501/VirtualQueueManagment.git]
+cd VirtualQueueManagment
 ```
 
 ### Backend Setup
 ```bash
-cd backend
+cd server
 npm install
 npm run dev
 ```
 
 ### Frontend Setup
 ```bash
-cd frontend
+cd client
 npm install
 npm run dev
 ```
