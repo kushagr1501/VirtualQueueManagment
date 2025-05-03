@@ -88,7 +88,7 @@ QueueMaster solves this with:
 
 Clone the repository:
 ```bash
-[git clone https://github.com/kushagr1501/VirtualQueueManagment.git]
+git clone https://github.com/kushagr1501/VirtualQueueManagment.git
 cd VirtualQueueManagment
 ```
 
@@ -121,16 +121,6 @@ PORT=5000
 - **Retail**: Popular restaurants, stores during sales
 - **Educational Institutions**: Admission offices, counseling centers
 
-
-## 🤝 Contributing
-
-We welcome contributions from developers who understand the pain of Indian queues!
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
 
 ## 📄 License
 
