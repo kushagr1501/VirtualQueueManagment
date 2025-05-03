@@ -61,6 +61,11 @@ QueueMaster solves this with:
 ### WorkFlow 
 ![WhatsApp Image 2025-05-03 at 12 14 06_61e0b17f](https://github.com/user-attachments/assets/09522f34-5cad-450a-b956-887fc411f811)
 
+###SnapShots 
+<img width="950" alt="landingpage" src="https://github.com/user-attachments/assets/f72a3bbc-7b02-47e8-aa85-a34be430e0e2" />
+<img width="958" alt="page1" src="https://github.com/user-attachments/assets/5c7db322-b25b-42f0-aa16-020ff76f81ac" />
+<img width="960" alt="queue" src="https://github.com/user-attachments/assets/aa8935bc-cb84-416c-95bd-f9f30fd6a18a" />
+<img width="960" alt="verify" src="https://github.com/user-attachments/assets/c9f53925-c601-4f08-912c-be46cc3c0f61" />
 
 
 ### Coming Soon
