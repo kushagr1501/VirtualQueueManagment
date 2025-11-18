@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Building2 } from "lucide-react";
+import { Users, Building2, LogIn, UserPlus, X } from "lucide-react";
 
 function Landing() {
   const navigate = useNavigate();
+  const [showBusinessOptions, setShowBusinessOptions] = useState(false);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f0f4ff] to-[#e6fbff] dark:from-[#0f172a] dark:to-[#1e293b] text-gray-900 dark:text-white px-4 flex items-center justify-center">
@@ -25,11 +26,13 @@ function Landing() {
             >
               <Users size={20} /> Enter as User
             </button>
+
+            {/* Business button now toggles an options card */}
             <button
-              onClick={() => navigate("/business/login")}
+              onClick={() => setShowBusinessOptions(true)}
               className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl text-lg font-medium hover:bg-blue-700 transition"
             >
-              <Building2 size={20} /> Business Login
+              <Building2 size={20} /> Business
             </button>
           </div>
         </div>
@@ -46,6 +49,66 @@ function Landing() {
               <li>📊 Admin dashboard manages flow</li>
             </ul>
           </div>
+
+          {/* Business options overlay/card */}
+          {showBusinessOptions && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center px-4"
+              aria-modal="true"
+              role="dialog"
+            >
+              {/* backdrop */}
+              <div
+                className="absolute inset-0 bg-black/40"
+                onClick={() => setShowBusinessOptions(false)}
+              />
+
+              <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-md p-6 z-10">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h4 className="text-lg font-bold">Business entry</h4>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Choose to login or register a new business.</p>
+                  </div>
+                  <button
+                    onClick={() => setShowBusinessOptions(false)}
+                    className="p-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700"
+                    aria-label="Close"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={() => {
+                      setShowBusinessOptions(false);
+                      navigate("/business/login");
+                    }}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition"
+                  >
+                    <LogIn size={16} /> Business Login
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setShowBusinessOptions(false);
+                      navigate("/business/signup");
+                    }}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+                  >
+                    <UserPlus size={16} /> Register New Business
+                  </button>
+
+                  <button
+                    onClick={() => setShowBusinessOptions(false)}
+                    className="w-full mt-2 text-sm text-slate-500 hover:underline"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
