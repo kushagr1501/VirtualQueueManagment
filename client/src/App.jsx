@@ -10,7 +10,7 @@ import VerifyUser from "./components/VerifyUser";
 import MyQueues from "./components/MyQueues";
 function App() {
   return (
-    <Router>
+  
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/home" element={<Home />} />
@@ -23,7 +23,6 @@ function App() {
         <Route path="/my-queues" element={<MyQueues />} />
 
       </Routes>
-    </Router>
   );
 }
 
