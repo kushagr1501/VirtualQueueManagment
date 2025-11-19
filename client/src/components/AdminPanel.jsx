@@ -13,7 +13,6 @@ import {
   Bell,
   Loader2,
   Plus,
-  ChevronRight,
   Menu,
   X,
   Search,
@@ -21,7 +20,10 @@ import {
 } from "lucide-react";
 import io from "socket.io-client";
 
-const socket = io("http://localhost:5000");
+
+const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+const socket = io(API);
 
 function AdminPanel() {
   const { id } = useParams();
@@ -56,10 +58,16 @@ function AdminPanel() {
   }, [addUserModalOpen, createQueueModalOpen]);
 
   useEffect(() => {
+    if (!id) return;
+
+    // join room and set up listener
     socket.emit("joinPlaceRoom", id);
     fetchData();
     socket.on("queueUpdate", fetchData);
-    return () => socket.off("queueUpdate");
+
+    return () => {
+      socket.off("queueUpdate", fetchData);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, selectedQueue]);
 
@@ -67,16 +75,14 @@ function AdminPanel() {
     setLoading(true);
     try {
       const [placeRes, queueRes, queueNamesRes] = await Promise.all([
-        axios.get(`http://localhost:5000/api/places/${id}`),
-        axios.get(
-          `http://localhost:5000/api/place/${id}?queueName=${selectedQueue}`
-        ),
-        axios.get(`http://localhost:5000/api/places/${id}/queues`),
+        axios.get(`${API}/api/places/${id}`),
+        axios.get(`${API}/api/place/${id}?queueName=${selectedQueue}`),
+        axios.get(`${API}/api/places/${id}/queues`),
       ]);
       setPlace(placeRes.data);
       setQueue(queueRes.data);
       setQueueNames(queueNamesRes.data || []);
-      if (!selectedQueue && queueNamesRes.data.length > 0) {
+      if (!selectedQueue && queueNamesRes.data && queueNamesRes.data.length > 0) {
         setSelectedQueue(queueNamesRes.data[0]);
       }
     } catch (error) {
@@ -101,7 +107,7 @@ function AdminPanel() {
   const addToQueue = async () => {
     if (!name.trim()) return setMessage("Enter a valid name");
     try {
-      await axios.post(`http://localhost:5000/api/place/${id}/join`, {
+      await axios.post(`${API}/api/place/${id}/join`, {
         userName: name,
         queueName: selectedQueue,
       });
@@ -117,7 +123,7 @@ function AdminPanel() {
 
   const serveUser = async (uid) => {
     try {
-      await axios.patch(`http://localhost:5000/api/serve/${uid}`);
+      await axios.patch(`${API}/api/serve/${uid}`);
       fetchData();
     } catch (error) {
       console.error("Error serving user:", error);
@@ -127,7 +133,7 @@ function AdminPanel() {
   const deletePlace = async () => {
     if (window.confirm("Are you sure you want to delete this place?")) {
       try {
-        await axios.delete(`http://localhost:5000/api/places/${id}`);
+        await axios.delete(`${API}/api/places/${id}`);
         navigate("/");
       } catch (error) {
         console.error("Error deleting place:", error);
@@ -142,7 +148,7 @@ function AdminPanel() {
     ) {
       try {
         await axios.delete(
-          `http://localhost:5000/api/queue/delete-all/${id}?queueName=${selectedQueue}`
+          `${API}/api/queue/delete-all/${id}?queueName=${selectedQueue}`
         );
         fetchData();
       } catch (err) {
@@ -154,7 +160,7 @@ function AdminPanel() {
   const createQueue = async () => {
     if (!newQueueName.trim()) return;
     try {
-      await axios.post(`http://localhost:5000/api/places/${id}/queues`, {
+      await axios.post(`${API}/api/places/${id}/queues`, {
         queueName: newQueueName,
       });
       setQueueCreateMessage(`Queue "${newQueueName}" created.`);
