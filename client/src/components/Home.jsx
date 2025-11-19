@@ -15,6 +15,8 @@ import {
   LogOut
 } from "lucide-react";
 
+const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
 function Home() {
   const [places, setPlaces] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,7 +27,7 @@ function Home() {
   useEffect(() => {
     setLoading(true);
     axios
-      .get("http://localhost:5000/api/places")
+      .get(`${API}/api/places`)
       .then((res) => {
         setPlaces(res.data);
         setLoading(false);
