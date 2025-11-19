@@ -1,6 +1,4 @@
-import React, { useEffect, useState } from "react";
-import axios from "axios";
-import { Link } from "react-router-dom";
+import React, { useState, useEffect } from "react";
 import { 
   Building2, 
   ArrowRight, 
@@ -17,30 +15,76 @@ import {
   TrendingUp,
   Zap,
   ChevronRight,
-  Star
+  Star,
+  BadgeCheck
 } from "lucide-react";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
-
 function Home() {
-  const [places, setPlaces] = useState([]);
+  const [places, setPlaces] = useState([
+    {
+      _id: "1",
+      name: "The Grand Bistro",
+      description: "Fine dining experience with contemporary cuisine and exceptional service",
+      location: "Downtown, Main Street 123",
+      queueCount: 7,
+      businessId: "b1",
+      verified: true
+    },
+    {
+      _id: "2",
+      name: "City Health Clinic",
+      description: "Modern healthcare facility offering comprehensive medical services",
+      location: "Medical District, 5th Avenue",
+      queueCount: 3,
+      businessId: "b2",
+      verified: true
+    },
+    {
+      _id: "3",
+      name: "Fashion Hub",
+      description: "Premium retail store with latest trends and designer collections",
+      location: "Shopping Center, Plaza Mall",
+      queueCount: 2,
+      businessId: "b3",
+      verified: false
+    },
+    {
+      _id: "4",
+      name: "Metro Bank",
+      description: "Full-service banking with personalized financial solutions",
+      location: "Financial District, Park Avenue",
+      queueCount: 5,
+      businessId: "b4",
+      verified: true
+    },
+    {
+      _id: "5",
+      name: "Café Delight",
+      description: "Artisan coffee shop with fresh pastries and cozy atmosphere",
+      location: "Arts Quarter, Elm Street",
+      queueCount: 1,
+      businessId: "b5",
+      verified: false
+    },
+    {
+      _id: "6",
+      name: "Tech Repairs Plus",
+      description: "Expert electronics repair service for all your devices",
+      location: "Tech Hub, Innovation Drive",
+      queueCount: 4,
+      businessId: "b6",
+      verified: true
+    }
+  ]);
+  
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const isLoggedIn = !!localStorage.getItem("token");
-  const currentBusinessId = localStorage.getItem("businessId");
+  const [currentView, setCurrentView] = useState("home");
+  const isLoggedIn = true;
+  const currentBusinessId = "b1";
 
   useEffect(() => {
-    setLoading(true);
-    axios
-      .get(`${API}/api/places`)
-      .then((res) => {
-        setPlaces(res.data);
-        setLoading(false);
-      })
-      .catch(error => {
-        console.error("Error fetching places:", error);
-        setLoading(false);
-      });
+    setTimeout(() => setLoading(false), 800);
   }, []);
 
   const getQueueBadgeColor = (count) => {
@@ -75,29 +119,44 @@ function Home() {
         <div className="flex-1 py-6 px-3">
           <nav>
             <div className="flex flex-col space-y-2">
-              <Link to="/home" className="group flex items-center px-4 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30 transition-all hover:shadow-xl hover:shadow-indigo-500/40">
+              <button 
+                onClick={() => setCurrentView("home")}
+                className="group flex items-center px-4 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30 transition-all hover:shadow-xl hover:shadow-indigo-500/40"
+              >
                 <Users className="h-5 w-5 md:mr-3" />
                 <span className="hidden md:block font-medium">Explore Places</span>
-              </Link>
-              <Link to="/my-queues" className="group flex items-center px-4 py-3 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all">
+              </button>
+              <button 
+                onClick={() => setCurrentView("queues")}
+                className="group flex items-center px-4 py-3 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all"
+              >
                 <Clock className="h-5 w-5 md:mr-3 group-hover:scale-110 transition-transform" />
                 <span className="hidden md:block">My Queues</span>
-              </Link>
-              <Link to="/popular" className="group flex items-center px-4 py-3 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all">
+              </button>
+              <button 
+                onClick={() => setCurrentView("popular")}
+                className="group flex items-center px-4 py-3 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all"
+              >
                 <TrendingUp className="h-5 w-5 md:mr-3 group-hover:scale-110 transition-transform" />
                 <span className="hidden md:block">Popular Places</span>
                 <span className="hidden md:block ml-auto text-xs bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-2 py-1 rounded-full">Soon</span>
-              </Link>
+              </button>
               {isLoggedIn && (
-                <Link to="/business/dashboard" className="group flex items-center px-4 py-3 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all">
+                <button 
+                  onClick={() => setCurrentView("dashboard")}
+                  className="group flex items-center px-4 py-3 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all"
+                >
                   <LayoutDashboard className="h-5 w-5 md:mr-3 group-hover:scale-110 transition-transform" />
                   <span className="hidden md:block">Business Dashboard</span>
-                </Link>
+                </button>
               )}
-              <Link to="/settings" className="group flex items-center px-4 py-3 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all">
+              <button 
+                onClick={() => setCurrentView("settings")}
+                className="group flex items-center px-4 py-3 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all"
+              >
                 <Settings className="h-5 w-5 md:mr-3 group-hover:scale-110 transition-transform" />
                 <span className="hidden md:block">Settings</span>
-              </Link>
+              </button>
             </div>
           </nav>
 
@@ -120,10 +179,10 @@ function Home() {
               <span className="hidden md:block font-medium">Logout</span>
             </button>
           ) : (
-            <Link to="/login" className="flex items-center w-full px-4 py-3 text-sm text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-xl transition-all group">
+            <button className="flex items-center w-full px-4 py-3 text-sm text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-xl transition-all group">
               <ExternalLink className="h-4 w-4 md:mr-2 group-hover:scale-110 transition-transform" />
               <span className="hidden md:block font-medium">Login</span>
-            </Link>
+            </button>
           )}
         </div>
       </div>
@@ -151,13 +210,11 @@ function Home() {
               )}
             </button>
             {!isLoggedIn && (
-              <Link to="/business/signup">
-                <button className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg hover:shadow-indigo-500/50 transition-all hover:scale-105 group">
-                  <Building2 size={18} className="group-hover:rotate-12 transition-transform" /> 
-                  <span>Register Business</span>
-                  <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
-                </button>
-              </Link>
+              <button className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg hover:shadow-indigo-500/50 transition-all hover:scale-105 group">
+                <Building2 size={18} className="group-hover:rotate-12 transition-transform" /> 
+                <span>Register Business</span>
+                <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
+              </button>
             )}
           </div>
         </div>
@@ -213,23 +270,6 @@ function Home() {
             </div>
             <p className="mt-4 text-slate-600 dark:text-slate-400 font-medium">Loading amazing places...</p>
           </div>
-        ) : places.length === 0 ? (
-          <div className="py-20 flex flex-col items-center justify-center text-center">
-            <div className="h-24 w-24 bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-950 dark:to-purple-950 rounded-3xl flex items-center justify-center mb-6 shadow-xl">
-              <Building2 className="h-12 w-12 text-indigo-600 dark:text-indigo-400" />
-            </div>
-            <h3 className="text-2xl font-bold mb-2 text-slate-800 dark:text-slate-200">No businesses registered yet</h3>
-            <p className="text-slate-600 dark:text-slate-400 max-w-md mb-6">
-              Be the first to register your business and start managing your queues efficiently with our powerful platform.
-            </p>
-            <Link to="/business/signup">
-              <button className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-4 rounded-xl font-semibold hover:shadow-2xl hover:shadow-indigo-500/50 transition-all hover:scale-105 group">
-                <Building2 size={20} className="group-hover:rotate-12 transition-transform" /> 
-                <span>Register Your Business</span>
-                <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
-              </button>
-            </Link>
-          </div>
         ) : filteredPlaces.length === 0 ? (
           <div className="py-20 flex flex-col items-center justify-center text-center">
             <div className="h-24 w-24 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 rounded-3xl flex items-center justify-center mb-6 shadow-xl">
@@ -267,9 +307,14 @@ function Home() {
                 
                 <div className="p-6">
                   <div className="flex justify-between items-start mb-3">
-                    <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                      {place.name}
-                    </h2>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                        {place.name}
+                      </h2>
+                      {place.verified && (
+                        <BadgeCheck className="h-5 w-5 text-blue-500 fill-blue-500" title="Verified Business" />
+                      )}
+                    </div>
                     <span className={`px-3 py-1.5 text-xs font-bold rounded-full whitespace-nowrap ${getQueueBadgeColor(place.queueCount || 0)}`}>
                       {place.queueCount || 0} in queue
                     </span>
@@ -291,18 +336,14 @@ function Home() {
                   </div>
                   
                   <div className="flex flex-wrap gap-2">
-                    <Link to={`/place/${place._id}`} className="flex-1">
-                      <button className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-3 rounded-xl text-sm font-semibold hover:shadow-lg hover:shadow-indigo-500/50 transition-all group/btn">
-                        <span>Join Queue</span>
-                        <ArrowRight size={16} className="group-hover/btn:translate-x-1 transition-transform" />
-                      </button>
-                    </Link>
+                    <button className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-3 rounded-xl text-sm font-semibold hover:shadow-lg hover:shadow-indigo-500/50 transition-all group/btn">
+                      <span>Join Queue</span>
+                      <ArrowRight size={16} className="group-hover/btn:translate-x-1 transition-transform" />
+                    </button>
                     {isLoggedIn && currentBusinessId && place.businessId === currentBusinessId && (
-                      <Link to={`/admin/place/${place._id}`}>
-                        <button className="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-4 py-3 text-sm rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all hover:scale-105">
-                          <LayoutDashboard size={18} />
-                        </button>
-                      </Link>
+                      <button className="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-4 py-3 text-sm rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all hover:scale-105">
+                        <LayoutDashboard size={18} />
+                      </button>
                     )}
                   </div>
                 </div>
@@ -327,11 +368,11 @@ function Home() {
                 </p>
               </div>
               <div className="flex gap-6 text-sm">
-                <a href="#" className="text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors">About</a>
-                <a href="#" className="text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors">FAQ</a>
-                <a href="#" className="text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors">Contact</a>
-                <a href="#" className="text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors">Terms</a>
-                <a href="#" className="text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors">Privacy</a>
+                <button className="text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors">About</button>
+                <button className="text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors">FAQ</button>
+                <button className="text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors">Contact</button>
+                <button className="text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors">Terms</button>
+                <button className="text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors">Privacy</button>
               </div>
             </div>
             <div className="mt-8 pt-6 border-t border-slate-200/50 dark:border-slate-800/50 text-center text-sm text-slate-500 dark:text-slate-500">
