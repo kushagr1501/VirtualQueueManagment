@@ -44,7 +44,6 @@ function AdminPanel() {
   const [addUserModalOpen, setAddUserModalOpen] = useState(false);
   const [createQueueModalOpen, setCreateQueueModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [verifyingId, setVerifyingId] = useState(null);
 
   // prevent body scroll when either modal is open
   useEffect(() => {
@@ -133,49 +132,7 @@ function AdminPanel() {
     }
   };
 
-  // Fully functional verifyUser:
-  // - optimistic UI update
-  // - PATCH to backend
-  // - emit socket event
-  // - open verification page you provided in new tab with place & user query params
-  const verifyUser = async (uid) => {
-    if (!uid) return;
-    setVerifyingId(uid);
-
-    // Optimistic update
-    const prevQueue = queue;
-    setQueue((prev) => prev.map((u) => (u._id === uid ? { ...u, isVerified: true } : u)));
-
-    try {
-      // call backend to mark verified (adjust the endpoint if your backend differs)
-      await axios.patch(`${API}/api/verify/${uid}`);
-
-      // emit to socket room (server may also emit)
-      try {
-        socket.emit("userVerified", { placeId: id, userId: uid });
-      } catch (e) {
-        // ignore socket emit errors
-      }
-
-      // open the external verification page with query params (your provided URL)
-      const verifyUrl = `https://virtual-queue-managment.vercel.app/#/admin/verify?place=${encodeURIComponent(
-        id
-      )}&user=${encodeURIComponent(uid)}`;
-      window.open(verifyUrl, "_blank");
-
-      // re-fetch canonical data
-      fetchData();
-    } catch (err) {
-      console.error("Verification failed:", err);
-      // rollback optimistic update if server failed
-      setQueue(prevQueue);
-      alert("Failed to verify user. Check console for details.");
-    } finally {
-      setVerifyingId(null);
-    }
-  };
-
-  // remove user from queue (confirm + call)
+  // Remove user from queue
   const removeUser = async (uid) => {
     if (!uid) return;
     if (!window.confirm("Remove this customer from the queue?")) return;
@@ -230,6 +187,14 @@ function AdminPanel() {
 
   const getWaitEstimate = (position) => `~${position * 8} min`;
 
+  // Single verify button action (opens your verify page in a new tab)
+  const openVerifyPage = () => {
+    const verifyUrl = `https://virtual-queue-managment.vercel.app/#/admin/verify?place=${encodeURIComponent(
+      id
+    )}`;
+    window.open(verifyUrl, "_blank");
+  };
+
   const filteredQueue = searchQuery
     ? queue.filter((user) =>
         (user.userName || "").toLowerCase().includes(searchQuery.toLowerCase())
@@ -265,6 +230,7 @@ function AdminPanel() {
                 <Users className="mr-3 h-5 w-5 group-hover:scale-110 transition-transform" />
                 Queue Management
               </a>
+
               <a
                 href="#"
                 className="group flex items-center px-4 py-3.5 text-sm font-medium rounded-xl text-white/90 hover:bg-white/10 hover:backdrop-blur-xl transition-all duration-200"
@@ -272,6 +238,7 @@ function AdminPanel() {
                 <BarChart2 className="mr-3 h-5 w-5 group-hover:scale-110 transition-transform" />
                 Analytics
               </a>
+
               <a
                 href="#"
                 className="group flex items-center px-4 py-3.5 text-sm font-medium rounded-xl text-white/90 hover:bg-white/10 hover:backdrop-blur-xl transition-all duration-200"
@@ -279,6 +246,16 @@ function AdminPanel() {
                 <Store className="mr-3 h-5 w-5 group-hover:scale-110 transition-transform" />
                 Business Profile
               </a>
+
+              {/* Verify Customers single button */}
+              <button
+                onClick={openVerifyPage}
+                className="w-full text-left flex items-center px-4 py-3.5 text-sm font-medium rounded-xl text-white/90 hover:bg-white/10 hover:backdrop-blur-xl transition-all duration-200"
+              >
+                <Check className="mr-3 h-5 w-5" />
+                Verify Customers
+              </button>
+
               <a
                 href="#"
                 className="group flex items-center px-4 py-3.5 text-sm font-medium rounded-xl text-white/90 hover:bg-white/10 hover:backdrop-blur-xl transition-all duration-200"
@@ -287,6 +264,7 @@ function AdminPanel() {
                 Notifications
                 <span className="ml-auto h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-bold shadow-lg">3</span>
               </a>
+
               <a
                 href="#"
                 className="group flex items-center px-4 py-3.5 text-sm font-medium rounded-xl text-white/90 hover:bg-white/10 hover:backdrop-blur-xl transition-all duration-200"
@@ -375,6 +353,13 @@ function AdminPanel() {
                   <BarChart2 className="mr-3 h-5 w-5" />
                   Analytics
                 </a>
+                <button
+                  onClick={openVerifyPage}
+                  className="w-full text-left flex items-center px-4 py-3.5 text-sm font-medium rounded-xl text-white/90 hover:bg-white/10 transition-all duration-200"
+                >
+                  <Check className="mr-3 h-5 w-5" />
+                  Verify Customers
+                </button>
                 <a
                   href="#"
                   className="group flex items-center px-4 py-3.5 text-sm font-medium rounded-xl text-white/90 hover:bg-white/10"
@@ -620,13 +605,7 @@ function AdminPanel() {
                                     Serve
                                   </button>
                                 ) : (
-                                  <button
-                                    className="inline-flex items-center px-3 py-2 border border-yellow-300 text-sm font-medium rounded-lg bg-yellow-50 text-yellow-800"
-                                    onClick={() => verifyUser(user._id)}
-                                    disabled={verifyingId === user._id}
-                                  >
-                                    {verifyingId === user._id ? "Verifying…" : "Verify"}
-                                  </button>
+                                  <span className="inline-flex items-center px-3 py-1 text-sm font-medium text-yellow-800 bg-yellow-100 rounded-full">Needs Verification</span>
                                 )}
 
                                 <button
