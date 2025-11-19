@@ -10,17 +10,32 @@ import authRoutes from "./routes/auth.routes.js";
 dotenv.config();
 const app = express();
 const server = http.createServer(app);
+
+
 const io = new Server(server, {
-  cors: { origin: "http://localhost:5173", methods: ["GET", "POST", "PATCH"] }
+  cors: { 
+    origin: process.env.FRONTEND_ORIGIN, 
+    methods: ["GET", "POST", "PATCH"],
+    credentials: true
+  }
 });
 
-app.use(cors());
+
+app.use(
+  cors({
+    origin: process.env.FRONTEND_ORIGIN ,      
+    methods: ["GET", "POST", "PATCH", "PUT", "DELETE"],
+    credentials: true
+  })
+);
+
 app.use(express.json());
 app.use("/api/auth", authRoutes);
-// DB
-mongoose.connect(process.env.MONGO_URI).then(() => console.log("Mongo Connected"));
 
-// Socket.IO logic
+// DB
+
+mongoose.connect(process.env.MONGO_URI).then(() => console.log("Mongo Connected"));
+  
 io.on("connection", (socket) => {
   console.log("Connected:", socket.id);
 
