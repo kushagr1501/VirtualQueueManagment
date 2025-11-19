@@ -2,6 +2,9 @@ import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
+
+const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
 function BusinessSignup() {
   const [form, setForm] = useState({
     name: "",
@@ -14,20 +17,27 @@ function BusinessSignup() {
 
   const navigate = useNavigate();
 
-  const handleChange = e => {
+  const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async () => {
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/signup", form);
+      // use the env-backed API URL
+      const res = await axios.post(`${API}/api/auth/signup`, form);
       const { token, businessId, placeId } = res.data;
 
       localStorage.setItem("token", token);
       localStorage.setItem("businessId", businessId);
 
-      navigate(`/admin/place/${placeId}`);
+      // navigate to the newly created place or admin page
+      if (placeId) {
+        navigate(`/admin/place/${placeId}`);
+      } else {
+        navigate("/admin/add-place");
+      }
     } catch (err) {
+      console.error("Signup error:", err);
       alert(err.response?.data?.message || "Signup failed");
     }
   };
