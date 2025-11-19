@@ -230,6 +230,14 @@ function AdminPanel() {
                 <Users className="mr-3 h-5 w-5 group-hover:scale-110 transition-transform" />
                 Queue Management
               </a>
+                  {/* Verify Customers single button */}
+              <button
+                onClick={openVerifyPage}
+                className="w-full text-left flex items-center px-4 py-3.5 text-sm font-medium rounded-xl text-white/90 hover:bg-white/10 hover:backdrop-blur-xl transition-all duration-200"
+              >
+                <Check className="mr-3 h-5 w-5" />
+                Verify Customers
+              </button>
 
               <a
                 href="#"
@@ -247,14 +255,7 @@ function AdminPanel() {
                 Business Profile
               </a>
 
-              {/* Verify Customers single button */}
-              <button
-                onClick={openVerifyPage}
-                className="w-full text-left flex items-center px-4 py-3.5 text-sm font-medium rounded-xl text-white/90 hover:bg-white/10 hover:backdrop-blur-xl transition-all duration-200"
-              >
-                <Check className="mr-3 h-5 w-5" />
-                Verify Customers
-              </button>
+          
 
               <a
                 href="#"
@@ -719,3 +720,4 @@ function AdminPanel() {
 }
 
 export default AdminPanel;
+
