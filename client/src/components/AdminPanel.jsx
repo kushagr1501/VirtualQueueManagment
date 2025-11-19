@@ -24,7 +24,7 @@ import {
 import io from "socket.io-client";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
-// socket created once
+// single socket instance (shared)
 const socket = io(API);
 
 function AdminPanel() {
@@ -44,6 +44,7 @@ function AdminPanel() {
   const [addUserModalOpen, setAddUserModalOpen] = useState(false);
   const [createQueueModalOpen, setCreateQueueModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [verifyingId, setVerifyingId] = useState(null);
 
   // prevent body scroll when either modal is open
   useEffect(() => {
@@ -132,25 +133,58 @@ function AdminPanel() {
     }
   };
 
-  // try to verify user (placeholder endpoint, update if needed)
+  // Fully functional verifyUser:
+  // - optimistic UI update
+  // - PATCH to backend
+  // - emit socket event
+  // - open verification page you provided in new tab with place & user query params
   const verifyUser = async (uid) => {
+    if (!uid) return;
+    setVerifyingId(uid);
+
+    // Optimistic update
+    const prevQueue = queue;
+    setQueue((prev) => prev.map((u) => (u._id === uid ? { ...u, isVerified: true } : u)));
+
     try {
+      // call backend to mark verified (adjust the endpoint if your backend differs)
       await axios.patch(`${API}/api/verify/${uid}`);
+
+      // emit to socket room (server may also emit)
+      try {
+        socket.emit("userVerified", { placeId: id, userId: uid });
+      } catch (e) {
+        // ignore socket emit errors
+      }
+
+      // open the external verification page with query params (your provided URL)
+      const verifyUrl = `https://virtual-queue-managment.vercel.app/#/admin/verify?place=${encodeURIComponent(
+        id
+      )}&user=${encodeURIComponent(uid)}`;
+      window.open(verifyUrl, "_blank");
+
+      // re-fetch canonical data
       fetchData();
-    } catch (error) {
-      console.error("Error verifying user:", error);
+    } catch (err) {
+      console.error("Verification failed:", err);
+      // rollback optimistic update if server failed
+      setQueue(prevQueue);
+      alert("Failed to verify user. Check console for details.");
+    } finally {
+      setVerifyingId(null);
     }
   };
 
-  // remove user from queue (placeholder; update endpoint as needed)
+  // remove user from queue (confirm + call)
   const removeUser = async (uid) => {
+    if (!uid) return;
     if (!window.confirm("Remove this customer from the queue?")) return;
     try {
-      // adjust endpoint to match your backend
       await axios.delete(`${API}/api/queue/user/${uid}`);
       fetchData();
-    } catch (error) {
-      console.error("Error removing user:", error);
+    } catch (err) {
+      console.error("Error removing user", err);
+      alert("Failed to remove user. See console for details.");
     }
   };
 
@@ -167,13 +201,9 @@ function AdminPanel() {
 
   const deleteCurrentQueue = async () => {
     if (!selectedQueue) return alert("Select a queue first.");
-    if (
-      window.confirm(`Delete queue "${selectedQueue}"? This cannot be undone.`)
-    ) {
+    if (window.confirm(`Delete queue "${selectedQueue}"? This cannot be undone.`)) {
       try {
-        await axios.delete(
-          `${API}/api/queue/delete-all/${id}?queueName=${selectedQueue}`
-        );
+        await axios.delete(`${API}/api/queue/delete-all/${id}?queueName=${selectedQueue}`);
         fetchData();
       } catch (err) {
         console.error("Failed to delete queue:", err);
@@ -593,8 +623,9 @@ function AdminPanel() {
                                   <button
                                     className="inline-flex items-center px-3 py-2 border border-yellow-300 text-sm font-medium rounded-lg bg-yellow-50 text-yellow-800"
                                     onClick={() => verifyUser(user._id)}
+                                    disabled={verifyingId === user._id}
                                   >
-                                    Verify
+                                    {verifyingId === user._id ? "Verifying…" : "Verify"}
                                   </button>
                                 )}
 
@@ -619,13 +650,10 @@ function AdminPanel() {
         </main>
       </div>
 
-      {/* Add User Modal (centered) */}
+      {/* Add User Modal */}
       {addUserModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setAddUserModalOpen(false)}
-          />
+          <div className="absolute inset-0 bg-black/40" onClick={() => setAddUserModalOpen(false)} />
           <div className="relative w-full max-w-lg mx-4 bg-white rounded-2xl shadow-2xl overflow-hidden z-10">
             <div className="px-6 pt-6 pb-4">
               <div className="flex items-start gap-4">
@@ -634,22 +662,14 @@ function AdminPanel() {
                 </div>
                 <div className="w-full">
                   <div className="flex items-start justify-between">
-                    <h3 className="text-xl font-semibold text-gray-900">
-                      Add Customer to Queue
-                    </h3>
-                    <button
-                      onClick={() => setAddUserModalOpen(false)}
-                      className="p-2 rounded-md hover:bg-slate-100"
-                      aria-label="Close"
-                    >
+                    <h3 className="text-xl font-semibold text-gray-900">Add Customer to Queue</h3>
+                    <button onClick={() => setAddUserModalOpen(false)} className="p-2 rounded-md hover:bg-slate-100" aria-label="Close">
                       <X className="h-5 w-5" />
                     </button>
                   </div>
 
                   <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Customer Name
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Customer Name</label>
                     <input
                       type="text"
                       name="name"
@@ -666,18 +686,8 @@ function AdminPanel() {
             </div>
 
             <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3">
-              <button
-                onClick={() => setAddUserModalOpen(false)}
-                className="px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={addToQueue}
-                className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
-              >
-                Add to Queue
-              </button>
+              <button onClick={() => setAddUserModalOpen(false)} className="px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
+              <button onClick={addToQueue} className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">Add to Queue</button>
             </div>
           </div>
         </div>
@@ -686,10 +696,7 @@ function AdminPanel() {
       {/* Create Queue Modal */}
       {createQueueModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setCreateQueueModalOpen(false)}
-          />
+          <div className="absolute inset-0 bg-black/40" onClick={() => setCreateQueueModalOpen(false)} />
           <div className="relative w-full max-w-lg mx-4 bg-white rounded-2xl shadow-2xl overflow-hidden z-10">
             <div className="px-6 pt-6 pb-4">
               <div className="flex items-start gap-4">
@@ -698,22 +705,14 @@ function AdminPanel() {
                 </div>
                 <div className="w-full">
                   <div className="flex items-start justify-between">
-                    <h3 className="text-xl font-semibold text-gray-900">
-                      Create New Queue
-                    </h3>
-                    <button
-                      onClick={() => setCreateQueueModalOpen(false)}
-                      className="p-2 rounded-md hover:bg-slate-100"
-                      aria-label="Close"
-                    >
+                    <h3 className="text-xl font-semibold text-gray-900">Create New Queue</h3>
+                    <button onClick={() => setCreateQueueModalOpen(false)} className="p-2 rounded-md hover:bg-slate-100" aria-label="Close">
                       <X className="h-5 w-5" />
                     </button>
                   </div>
 
                   <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Queue Name
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Queue Name</label>
                     <input
                       type="text"
                       name="new-queue"
@@ -730,18 +729,8 @@ function AdminPanel() {
             </div>
 
             <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3">
-              <button
-                onClick={() => setCreateQueueModalOpen(false)}
-                className="px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={createQueue}
-                className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
-              >
-                Create Queue
-              </button>
+              <button onClick={() => setCreateQueueModalOpen(false)} className="px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
+              <button onClick={createQueue} className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">Create Queue</button>
             </div>
           </div>
         </div>
