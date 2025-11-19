@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
 import io from "socket.io-client";
@@ -8,7 +8,8 @@ import {
   Loader, X, RefreshCw, Award, Trophy
 } from "lucide-react";
 
-const socket = io("http://localhost:5000");
+const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
 
 function QueuePage() {
   const { id } = useParams();
@@ -25,25 +26,53 @@ function QueuePage() {
     JSON.parse(localStorage.getItem(`queueUser_${id}`)) || null
   );
 
+  const socketRef = useRef(null);
+
   useEffect(() => {
-    socket.emit("joinPlaceRoom", id);
+    // init socket using the API url
+    socketRef.current = io(API, { withCredentials: true });
+
+    // join room once connected
+    socketRef.current.on("connect", () => {
+      if (id) socketRef.current.emit("joinPlaceRoom", id);
+    });
+
+    // listen for updates
+    socketRef.current.on("queueUpdate", () => {
+      fetchQueue(); // refresh when server broadcasts
+    });
+
+    // initial data fetches
     fetchPlaceName();
     fetchQueueNames();
-    fetchQueue();
-    socket.on("queueUpdate", fetchQueue);
+
+    // interval to recalc wait time every minute if user present
     const interval = setInterval(() => {
       if (userInfo) calculateWaitTime();
-    }, 60000);
+    }, 60_000);
+
+    // cleanup on unmount
     return () => {
-      socket.off("queueUpdate");
       clearInterval(interval);
+      if (socketRef.current) {
+        socketRef.current.off("queueUpdate");
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
     };
-  }, [id, userInfo, selectedQueue]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]); // recreate socket when place id changes
+
+  useEffect(() => {
+    // whenever selectedQueue or userInfo changes, refresh queue
+    fetchQueue();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedQueue, userInfo]);
 
   const fetchPlaceName = async () => {
     try {
-      const res = await axios.get(`http://localhost:5000/api/places/${id}`);
-      setPlaceName(res.data.name || "Unknown Place");
+      const res = await axios.get(`${API}/api/places/${id}`);
+      setPlaceName(res.data?.name || "Unknown Place");
     } catch (err) {
       console.error("Failed to fetch place:", err);
     }
@@ -51,9 +80,9 @@ function QueuePage() {
 
   const fetchQueueNames = async () => {
     try {
-      const res = await axios.get(`http://localhost:5000/api/places/${id}/queues`);
+      const res = await axios.get(`${API}/api/places/${id}/queues`);
       setQueueNames(res.data || []);
-      if (!selectedQueue && res.data.length > 0) {
+      if (!selectedQueue && res.data?.length > 0) {
         setSelectedQueue(res.data[0]);
       }
     } catch (err) {
@@ -65,9 +94,11 @@ function QueuePage() {
     if (!selectedQueue) return;
     setRefreshing(true);
     try {
-      const res = await axios.get(`http://localhost:5000/api/place/${id}?queueName=${selectedQueue}`);
-      setQueue(res.data);
-      if (userInfo) calculateWaitTime();
+      const res = await axios.get(`${API}/api/place/${id}`, {
+        params: { queueName: selectedQueue },
+      });
+      setQueue(res.data || []);
+      if (userInfo) calculateWaitTime(res.data || []);
     } catch (err) {
       console.error("Queue fetch failed:", err);
       setError("Failed to load queue data");
@@ -77,18 +108,21 @@ function QueuePage() {
     }
   };
 
-  const calculateWaitTime = () => {
-    if (!queue.length || !userInfo) return;
-    const position = queue.findIndex(person => person._id === userInfo._id);
-    if (position === -1) return;
-    setEstimatedWaitTime(position * 5);
+  const calculateWaitTime = (currentQueue = queue) => {
+    if (!currentQueue.length || !userInfo) return;
+    const position = currentQueue.findIndex(person => person._id === userInfo._id);
+    if (position === -1) {
+      setEstimatedWaitTime(null);
+      return;
+    }
+    setEstimatedWaitTime(position * 5); // minutes
   };
 
   const joinQueue = async () => {
     if (!name.trim() || !selectedQueue) return;
     setLoading(true);
     try {
-      const res = await axios.post(`http://localhost:5000/api/place/${id}/join`, {
+      const res = await axios.post(`${API}/api/place/${id}/join`, {
         userName: name,
         queueName: selectedQueue
       });
@@ -97,6 +131,11 @@ function QueuePage() {
       localStorage.setItem(`queueUser_${id}`, JSON.stringify(info));
       setName("");
       toast.success("🎉 You've joined the queue!");
+      // ask server to notify (server should broadcast)
+      if (socketRef.current && socketRef.current.connected) {
+        socketRef.current.emit("joinPlaceRoom", id);
+      }
+      fetchQueue();
     } catch (err) {
       console.error("Join failed:", err);
       setError("Failed to join queue. Please try again.");
@@ -107,12 +146,14 @@ function QueuePage() {
   };
 
   const leaveQueue = async () => {
+    if (!userInfo?._id) return;
     setLoading(true);
     try {
-      await axios.post(`http://localhost:5000/api/leave/${userInfo._id}`);
+      await axios.post(`${API}/api/leave/${userInfo._id}`);
       localStorage.removeItem(`queueUser_${id}`);
       setUserInfo(null);
       toast("👋 You've left the queue.");
+      fetchQueue();
     } catch (err) {
       console.error("Leave failed:", err);
       toast.error("Failed to leave queue.");
@@ -123,7 +164,8 @@ function QueuePage() {
 
   const getUserPosition = () => {
     if (!userInfo || !queue.length) return null;
-    return queue.findIndex(person => person._id === userInfo._id) + 1;
+    const idx = queue.findIndex(person => person._id === userInfo._id);
+    return idx === -1 ? null : idx + 1;
   };
 
   const userPosition = getUserPosition();
