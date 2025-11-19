@@ -14,12 +14,12 @@ const server = http.createServer(app);
 
 // Normalize FRONTEND_ORIGIN from env and include local dev origins
 const frontendOriginRaw = (process.env.FRONTEND_ORIGIN || "").trim();
-const frontendOrigin = frontendOriginRaw.replace(/\/$/, ""); // remove trailing slash
+const frontendOrigin = frontendOriginRaw.replace(/\/$/, ""); 
 const allowedOrigins = [
   ...(frontendOrigin ? [frontendOrigin] : []),
   "http://localhost:5173",
   "http://127.0.0.1:5173",
-  "http://localhost:3000",   // optional, add any dev ports you use
+  "http://localhost:3000",  
   "http://127.0.0.1:3000"
 ];
 
@@ -44,10 +44,8 @@ app.use(
   })
 );
 
-// parse JSON bodies
 app.use(express.json());
 
-// Attach auth routes early if needed
 app.use("/api/auth", authRoutes);
 
 // DB
@@ -85,6 +83,6 @@ io.on("connection", (socket) => {
 const queueRoutes = queueRoutesFactory(io);
 app.use("/api", queueRoutes);
 
-// Start server on env PORT (Render sets PORT), fallback to 5000
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
