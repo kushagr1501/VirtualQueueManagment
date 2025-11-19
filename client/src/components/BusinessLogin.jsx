@@ -2,29 +2,37 @@ import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
+// Use Vite env var (fallback to localhost for dev)
+const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
 function BusinessLogin() {
   const [form, setForm] = useState({ email: "", password: "" });
   const navigate = useNavigate();
 
-  const handleChange = e => {
+  const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const handleLogin = async () => {
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/login", form);
+      const res = await axios.post(`${API}/api/auth/login`, form);
       const { token, businessId } = res.data;
 
       localStorage.setItem("token", token);
       localStorage.setItem("businessId", businessId);
 
-      const places = await axios.get(`http://localhost:5000/api/places?businessId=${businessId}`);
-      if (places.data.length > 0) {
-        navigate(`/admin/place/${places.data[0]._id}`);
+      const placesRes = await axios.get(
+        `${API}/api/places`,
+        { params: { businessId } }
+      );
+
+      if (placesRes.data && placesRes.data.length > 0) {
+        navigate(`/admin/place/${placesRes.data[0]._id}`);
       } else {
         navigate("/admin/add-place");
       }
     } catch (err) {
+      console.error("Login error:", err);
       alert(err.response?.data?.message || "Login failed");
     }
   };
