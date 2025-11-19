@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import axios from "axios";
-import { Search, User, CheckCircle, XCircle, Clock, Award, AlertCircle, Check, Loader, RefreshCw } from "lucide-react";
+import { Search, User, CheckCircle, XCircle, Clock, Award, AlertCircle, Check, Loader } from "lucide-react";
+
+const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 function VerifyUser() {
   const [code, setCode] = useState("");
@@ -13,39 +15,40 @@ function VerifyUser() {
   const inputRef = useRef(null);
 
   useEffect(() => {
-    // Focus input on component mount
-    if (inputRef.current) {
-      inputRef.current.focus();
-    }
-    
+    // Focus input on mount
+    if (inputRef.current) inputRef.current.focus();
+
     // Load verification history from localStorage
-    const savedHistory = localStorage.getItem('verificationHistory');
+    const savedHistory = localStorage.getItem("verificationHistory");
     if (savedHistory) {
       try {
         setHistory(JSON.parse(savedHistory));
       } catch (e) {
-        // If parsing fails, just start with empty history
-        localStorage.removeItem('verificationHistory');
+        localStorage.removeItem("verificationHistory");
       }
     }
   }, []);
 
   const handleSearch = async () => {
-    if (!code.trim()) return;
-    
+    const trimmed = code.trim();
+    if (!trimmed) return;
+
     setError("");
     setLoading(true);
     setSuccess(false);
-    
+
     try {
-      const res = await axios.get(`http://localhost:5000/api/queue/find-by-code/${code}`);
+      const res = await axios.get(`${API}/api/queue/find-by-code/${trimmed}`);
       setResult(res.data);
-      
-      // Add to recent searches if not already in history
-      if (!history.some(item => item.code === code)) {
-        const newHistory = [{ code, userName: res.data.userName, timestamp: new Date().toISOString() }, ...history].slice(0, 5);
+
+      // Add to recent searches if not already present
+      if (!history.some((item) => item.code === trimmed)) {
+        const newHistory = [
+          { code: trimmed, userName: res.data.userName || "Unknown", timestamp: new Date().toISOString(), verified: !!res.data.isVerified },
+          ...history,
+        ].slice(0, 5);
         setHistory(newHistory);
-        localStorage.setItem('verificationHistory', JSON.stringify(newHistory));
+        localStorage.setItem("verificationHistory", JSON.stringify(newHistory));
       }
     } catch (err) {
       setResult(null);
@@ -57,25 +60,25 @@ function VerifyUser() {
 
   const markVerified = async () => {
     if (!result) return;
-    
+
     setVerifying(true);
+    setError("");
+
     try {
-      const res = await axios.patch(`http://localhost:5000/api/queue/${result._id}/verify`);
+      const res = await axios.patch(`${API}/api/queue/${result._id}/verify`);
       setResult(res.data);
       setSuccess(true);
-      
-      // Update history item to show verified
-      const updatedHistory = history.map(item => 
+
+      // Update history to mark verified
+      const updatedHistory = history.map((item) =>
         item.code === code ? { ...item, verified: true } : item
       );
       setHistory(updatedHistory);
-      localStorage.setItem('verificationHistory', JSON.stringify(updatedHistory));
-      
-      // Show success animation
-      setTimeout(() => {
-        setSuccess(false);
-      }, 3000);
+      localStorage.setItem("verificationHistory", JSON.stringify(updatedHistory));
+
+      setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
+      console.error("Verification error:", err);
       setError("Verification failed. Please try again.");
     } finally {
       setVerifying(false);
@@ -83,28 +86,26 @@ function VerifyUser() {
   };
 
   const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && code.trim()) {
-      handleSearch();
-    }
+    if (e.key === "Enter" && code.trim()) handleSearch();
   };
 
   const clearHistory = () => {
     setHistory([]);
-    localStorage.removeItem('verificationHistory');
+    localStorage.removeItem("verificationHistory");
   };
 
   const loadFromHistory = (historyCode) => {
     setCode(historyCode);
-    // Auto-search when clicking on history item
-    setTimeout(() => {
-      handleSearch();
-    }, 100);
+    setTimeout(() => handleSearch(), 100);
   };
 
-  // Format timestamp to readable time
   const formatTime = (timestamp) => {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    try {
+      const date = new Date(timestamp);
+      return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    } catch {
+      return "";
+    }
   };
 
   return (
@@ -155,6 +156,7 @@ function VerifyUser() {
                   {loading ? <Loader size={16} className="animate-spin" /> : "Search"}
                 </button>
               </div>
+
               {error && (
                 <div className="mt-2 text-red-500 flex items-center gap-1">
                   <AlertCircle size={16} />
@@ -165,18 +167,23 @@ function VerifyUser() {
 
             {/* Result Card */}
             {result && (
-              <div className={`bg-white border rounded-xl p-5 shadow-md transition-all ${success ? 'bg-green-50 border-green-200' : ''}`}>
+              <div className={`bg-white border rounded-xl p-5 shadow-md transition-all ${success ? "bg-green-50 border-green-200" : ""}`}>
                 <div className="flex justify-between items-start mb-4">
                   <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                     <User size={18} />
                     Customer Details
                   </h3>
-                  <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    result.status === 'waiting' ? 'bg-yellow-100 text-yellow-800' : 
-                    result.status === 'active' ? 'bg-green-100 text-green-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {result.status.charAt(0).toUpperCase() + result.status.slice(1)}
+                  <div
+                    className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      result.status === "waiting"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : result.status === "active"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-gray-100 text-gray-800"
+                    }`}
+                  >
+                    {String(result.status || "Unknown").charAt(0).toUpperCase() +
+                      String(result.status || "Unknown").slice(1)}
                   </div>
                 </div>
 
@@ -187,7 +194,7 @@ function VerifyUser() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Name</p>
-                      <p className="font-medium">{result.userName}</p>
+                      <p className="font-medium">{result.userName || "—"}</p>
                     </div>
                   </div>
 
@@ -197,7 +204,7 @@ function VerifyUser() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Verification Code</p>
-                      <p className="font-mono font-medium">{result.verificationCode}</p>
+                      <p className="font-mono font-medium">{result.verificationCode || "—"}</p>
                     </div>
                   </div>
 
@@ -208,22 +215,19 @@ function VerifyUser() {
                     <div>
                       <p className="text-sm text-gray-500">Joined Queue</p>
                       <p className="font-medium">
-                        {result.joinedAt ? new Date(result.joinedAt).toLocaleString() : 'N/A'}
+                        {result.joinedAt ? new Date(result.joinedAt).toLocaleString() : "N/A"}
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-start gap-2">
-                    <div className={`p-2 rounded-lg ${result.isVerified ? 'bg-green-100' : 'bg-yellow-100'}`}>
-                      {result.isVerified ? 
-                        <CheckCircle size={18} className="text-green-600" /> : 
-                        <AlertCircle size={18} className="text-yellow-600" />
-                      }
+                    <div className={`p-2 rounded-lg ${result.isVerified ? "bg-green-100" : "bg-yellow-100"}`}>
+                      {result.isVerified ? <CheckCircle size={18} className="text-green-600" /> : <AlertCircle size={18} className="text-yellow-600" />}
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Verification Status</p>
-                      <p className={`font-medium ${result.isVerified ? 'text-green-600' : 'text-yellow-600'}`}>
-                        {result.isVerified ? 'Verified ✓' : 'Not Verified'}
+                      <p className={`font-medium ${result.isVerified ? "text-green-600" : "text-yellow-600"}`}>
+                        {result.isVerified ? "Verified ✓" : "Not Verified"}
                       </p>
                     </div>
                   </div>
@@ -261,25 +265,24 @@ function VerifyUser() {
               <div className="mt-6">
                 <div className="flex justify-between items-center mb-2">
                   <h3 className="text-sm font-medium text-gray-500">Recent verifications</h3>
-                  <button 
-                    onClick={clearHistory}
-                    className="text-xs text-indigo-600 hover:text-indigo-800"
-                  >
+                  <button onClick={clearHistory} className="text-xs text-indigo-600 hover:text-indigo-800">
                     Clear history
                   </button>
                 </div>
                 <div className="bg-gray-50 rounded-lg divide-y divide-gray-200">
                   {history.map((item, index) => (
-                    <div 
-                      key={index} 
+                    <div
+                      key={index}
                       className="p-3 flex justify-between items-center hover:bg-gray-100 cursor-pointer"
                       onClick={() => loadFromHistory(item.code)}
                     >
                       <div className="flex items-center gap-2">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                          item.verified ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-700'
-                        }`}>
-                          {item.verified ? <Check size={14} /> : item.code[0]}
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                            item.verified ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-700"
+                          }`}
+                        >
+                          {item.verified ? <Check size={14} /> : item.code?.[0] || "?"}
                         </div>
                         <div>
                           <p className="font-medium truncate">{item.userName}</p>
