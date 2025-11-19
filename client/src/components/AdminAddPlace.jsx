@@ -2,40 +2,45 @@ import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
+
+const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
 function AdminAddPlace() {
   const [form, setForm] = useState({ name: "", description: "", location: "" });
   const [message, setMessage] = useState("");
   const navigate = useNavigate();
 
-  const handleChange = e => {
+  const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async () => {
     const { name, description, location } = form;
     const businessId = localStorage.getItem("businessId");
-  
+
     if (!name || !description || !location) {
       setMessage("All fields are required.");
       return;
     }
-  
+
     try {
-      await axios.post("http://localhost:5000/api/places", {
+      await axios.post(`${API}/api/places`, {
         name,
         description,
         location,
-        businessId 
+        businessId,
       });
+
       setMessage("Place created successfully!");
       setTimeout(() => {
         navigate("/");
       }, 1000);
     } catch (error) {
+      console.error("Add place error:", error);
       setMessage("Something went wrong.");
     }
   };
-  
+
   return (
     <div style={{ padding: 20 }}>
       <h2>🏢 Add Your Place</h2>
