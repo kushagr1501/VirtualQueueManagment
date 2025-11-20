@@ -167,41 +167,38 @@ function AdminPanel() {
   //     }
   //   }
   // };
-    const deleteCurrentQueue = async () => {
-    if (!selectedQueue) return alert("Select a queue first.");
+ const deleteCurrentQueue = async () => {
+  if (!selectedQueue) return alert("Select a queue first.");
+  if (!window.confirm(`Delete queue "${selectedQueue}"? This cannot be undone.`)) return;
 
-    if (!window.confirm(`Delete queue "${selectedQueue}"? This cannot be undone.`)) return;
+  try {
+    await axios.delete(`${API}/api/queue/delete-queue/${id}/${encodeURIComponent(selectedQueue)}`);
 
-    try {
+    // optimistic UI update
+    const updatedQueueNames = queueNames.filter((q) => q !== selectedQueue);
+    setQueueNames(updatedQueueNames);
 
-     await axios.delete(`${API}/api/queue/delete-queue/${id}/${encodeURIComponent(selectedQueue)}`);
-
-      // optimistic UI update: remove queueName from list and clear visible queue
-      const updatedQueueNames = queueNames.filter((q) => q !== selectedQueue);
-      setQueueNames(updatedQueueNames);
-
-      if (updatedQueueNames.length > 0) {
-        // pick next queue (first in list)
-        setSelectedQueue(updatedQueueNames[0]);
-      } else {
-        // no queues left
-        setSelectedQueue("");
-        setQueue([]); // clear visible queue since queue is deleted
-      }
-
-      // small UX: show immediate feedback (optional)
-      // You can set a toast/message here instead of console.log
-      console.log(`Queue "${selectedQueue}" deleted`);
-
-      // re-sync with server to get canonical state and emit updates to socket listeners
-      await fetchData();
-    } catch (err) {
-      console.error("Failed to delete queue:", err);
-      alert("Failed to delete queue. See console for details.");
-      // fallback: try to re-sync UI with latest server state
-      fetchData();
+    if (updatedQueueNames.length > 0) {
+      setSelectedQueue(updatedQueueNames[0]);
+    } else {
+      setSelectedQueue("");
+      setQueue([]);
     }
-  };
+
+    await fetchData();
+  } catch (err) {
+    console.error("Failed to delete queue:", err);
+    // show more helpful error info
+    if (err.response) {
+      console.error("Server response:", err.response.status, err.response.data);
+      alert(`Failed to delete queue (${err.response.status}): ${err.response.data?.message || JSON.stringify(err.response.data)}`);
+    } else {
+      alert("Failed to delete queue. See console for details.");
+    }
+    fetchData();
+  }
+};
+
 
 
   const createQueue = async () => {
@@ -756,6 +753,7 @@ function AdminPanel() {
 }
 
 export default AdminPanel;
+
 
 
 
