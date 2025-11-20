@@ -43,7 +43,6 @@ function QueuePage() {
 
     socketRef.current.on("queueUpdate", () => {
       fetchQueue();
-      fetchQueueNames(); // Refresh queue names when any update happens
     });
 
     fetchPlaceName();
@@ -81,38 +80,8 @@ function QueuePage() {
   const fetchQueueNames = async () => {
     try {
       const res = await axios.get(`${API}/api/places/${id}/queues`);
-      const availableQueues = res.data || [];
-      setQueueNames(availableQueues);
-      
-      // Check if current selected queue still exists
-      if (selectedQueue && !availableQueues.includes(selectedQueue)) {
-        // Selected queue was deleted
-        toast.error(`Queue "${selectedQueue}" has been deleted by the business.`);
-        
-        // Clear user info if they were in the deleted queue
-        if (userInfo) {
-          localStorage.removeItem(`queueUser_${id}`);
-          setUserInfo(null);
-          setServedPending(false);
-          setServedEntry(null);
-          setCancelledPending(false);
-        }
-        
-        // Switch to first available queue or clear selection
-        if (availableQueues.length > 0) {
-          setSelectedQueue(availableQueues[0]);
-        } else {
-          setSelectedQueue("");
-          setQueue([]);
-        }
-      } else if (!selectedQueue && availableQueues.length > 0) {
-        // No queue selected but queues available - select first one
-        setSelectedQueue(availableQueues[0]);
-      } else if (availableQueues.length === 0) {
-        // No queues available
-        setSelectedQueue("");
-        setQueue([]);
-      }
+      setQueueNames(res.data || []);
+      if (!selectedQueue && res.data?.length > 0) setSelectedQueue(res.data[0]);
     } catch (err) {
       console.error("Failed to fetch queue names", err);
     }
@@ -128,13 +97,7 @@ function QueuePage() {
   };
 
   const fetchQueue = async () => {
-    if (!selectedQueue) {
-      setQueue([]);
-      setLoading(false);
-      setRefreshing(false);
-      return;
-    }
-    
+    if (!selectedQueue) return;
     setRefreshing(true);
     try {
       const res = await axios.get(`${API}/api/place/${id}`, {
@@ -158,13 +121,14 @@ function QueuePage() {
             setCancelledPending(true);
             toast("You are no longer in the queue. Press Leave to continue.");
           } else if (entry.status === "served") {
-            setServedPending(true);
-            setServedEntry(entry);
-            setCancelledPending(false);
-            
-            // Show appropriate message based on why they were served
-            if (entry.queueName !== selectedQueue) {
-              toast("Your queue was deleted by the business.");
+            if (entry.servedReason === "queue_deleted") {
+              setServedPending(true);
+              setServedEntry(entry);
+              setCancelledPending(false);
+            } else {
+              setServedPending(true);
+              setServedEntry(entry);
+              setCancelledPending(false);
             }
           } else if (entry.status === "cancelled") {
             setCancelledPending(true);
@@ -336,7 +300,7 @@ function QueuePage() {
       <div className="w-full max-w-xl bg-white rounded-2xl shadow-xl overflow-hidden">
         <div className="bg-indigo-600 text-white p-6 flex justify-between items-center">
           <h1 className="text-2xl font-bold">{placeName}</h1>
-          <button onClick={() => { fetchQueue(); fetchQueueNames(); }} disabled={refreshing} className="p-2">
+          <button onClick={fetchQueue} disabled={refreshing} className="p-2">
             <RefreshCw size={20} className={refreshing ? "animate-spin" : ""} />
           </button>
         </div>
@@ -349,28 +313,29 @@ function QueuePage() {
             </div>
           )}
 
-          {/* Show message if no queues exist */}
-          {queueNames.length === 0 && (
-            <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-xl p-5">
-              <h2 className="text-lg font-semibold text-yellow-800 mb-2">No queues available</h2>
-              <p className="text-sm text-yellow-700">This place doesn't have any active queues at the moment. Please check back later.</p>
+          {/* Apology flow for queue_deleted */}
+          {servedPending && servedEntry && servedEntry.servedReason === "queue_deleted" && (
+            <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-5">
+              <h2 className="text-lg font-semibold text-red-800 mb-2">We're sorry — Queue closed</h2>
+              <p className="text-sm text-red-700 mb-3">
+                The queue you joined was closed by the business. Please press <strong>Leave Queue</strong> to clear your local record and contact the business for next steps.
+              </p>
+              <div className="flex gap-3">
+                <button onClick={leaveAfterQueueDeleted} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg">Leave Queue</button>
+              </div>
             </div>
           )}
 
-          {/* Served flow when queue was deleted */}
-          {servedPending && servedEntry && (
+          {/* Served-by-staff flow */}
+          {servedPending && servedEntry && servedEntry.servedReason !== "queue_deleted" && (
             <div className="mb-6 bg-yellow-50 border border-yellow-300 rounded-xl p-5">
-              <h2 className="text-lg font-semibold text-yellow-800 mb-2">Queue Update</h2>
-              <p className="text-sm text-yellow-700 mb-3">
-                {servedEntry.queueName !== selectedQueue 
-                  ? "Your queue was closed by the business. Please confirm to clear your record."
-                  : "Staff has marked your entry as served. Confirm to clear your local record."}
-              </p>
+              <h2 className="text-lg font-semibold text-yellow-800 mb-2">You're being served</h2>
+              <p className="text-sm text-yellow-700 mb-3">Staff has marked your entry as <strong>served</strong>. Confirm to clear your local record.</p>
               <div className="flex gap-3">
                 <button onClick={confirmServedAndLeave} disabled={ackLoading} className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg">
-                  {ackLoading ? <Loader size={16} className="animate-spin" /> : "Confirm & Leave"}
+                  {ackLoading ? <Loader size={16} className="animate-spin" /> : "I've been served — Confirm & Leave"}
                 </button>
-                <button onClick={() => { setServedPending(false); toast("Keeping your record for now."); }} className="bg-white border border-yellow-300 text-yellow-700 px-4 py-2 rounded-lg">Keep record</button>
+                <button onClick={() => { setServedPending(false); toast("Okay — we'll keep your record until you confirm."); }} className="bg-white border border-yellow-300 text-yellow-700 px-4 py-2 rounded-lg">Not yet / Keep me listed</button>
               </div>
             </div>
           )}
@@ -387,7 +352,7 @@ function QueuePage() {
             </div>
           )}
 
-          {!userInfo && queueNames.length > 0 ? (
+          {!userInfo ? (
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 mb-6">
               <h2 className="text-lg font-semibold mb-3">Join the Queue</h2>
               <select value={selectedQueue} onChange={(e) => setSelectedQueue(e.target.value)} className="mb-4 w-full px-3 py-2 border rounded-md">
@@ -404,7 +369,7 @@ function QueuePage() {
                 </button>
               </div>
             </div>
-          ) : userInfo && queueNames.length > 0 ? (
+          ) : (
             <div className="bg-green-50 border border-green-200 rounded-xl p-5 mb-6">
               <h2 className="text-lg font-semibold text-green-800 mb-2">You're in the Queue!</h2>
               <div className="bg-white border border-green-200 rounded-lg p-3 mb-3">
@@ -416,43 +381,41 @@ function QueuePage() {
                 {loading ? <Loader size={16} className="animate-spin mx-auto" /> : "Leave Queue"}
               </button>
             </div>
-          ) : null}
-
-          {queueNames.length > 0 && selectedQueue && (
-            <div className="mt-6">
-              <div className="flex items-center gap-2 mb-3">
-                <Users size={18} className="text-indigo-600" />
-                <h2 className="text-lg font-semibold">Queue Leaderboard</h2>
-              </div>
-
-              {loading ? (
-                <div className="flex justify-center p-10">
-                  <Loader size={24} className="animate-spin text-indigo-600" />
-                </div>
-              ) : queue.length === 0 ? (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center text-gray-500">No one is in the queue right now</div>
-              ) : (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden">
-                  <div className="p-3 bg-indigo-50 border-b border-gray-200 text-xs font-semibold text-indigo-800 grid grid-cols-12">
-                    <div className="col-span-2 text-center">#</div>
-                    <div className="col-span-10">Name</div>
-                  </div>
-
-                  <div className="divide-y divide-gray-200 max-h-60 overflow-y-auto">
-                    {queue.map((person, index) => (
-                      <div key={person._id} className={`p-3 grid grid-cols-12 items-center ${person._id === userInfo?._id ? 'bg-indigo-50' : ''}`}>
-                        <div className="col-span-2 flex justify-center">{getPositionIcon(index + 1)}</div>
-                        <div className="col-span-10 font-medium truncate flex items-center">
-                          {person.userName}
-                          {person._id === userInfo?._id && <span className="ml-2 text-xs bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">You</span>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
           )}
+
+          <div className="mt-6">
+            <div className="flex items-center gap-2 mb-3">
+              <Users size={18} className="text-indigo-600" />
+              <h2 className="text-lg font-semibold">Queue Leaderboard</h2>
+            </div>
+
+            {loading ? (
+              <div className="flex justify-center p-10">
+                <Loader size={24} className="animate-spin text-indigo-600" />
+              </div>
+            ) : queue.length === 0 ? (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center text-gray-500">No one is in the queue right now</div>
+            ) : (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden">
+                <div className="p-3 bg-indigo-50 border-b border-gray-200 text-xs font-semibold text-indigo-800 grid grid-cols-12">
+                  <div className="col-span-2 text-center">#</div>
+                  <div className="col-span-10">Name</div>
+                </div>
+
+                <div className="divide-y divide-gray-200 max-h-60 overflow-y-auto">
+                  {queue.map((person, index) => (
+                    <div key={person._id} className={`p-3 grid grid-cols-12 items-center ${person._id === userInfo?._id ? 'bg-indigo-50' : ''}`}>
+                      <div className="col-span-2 flex justify-center">{getPositionIcon(index + 1)}</div>
+                      <div className="col-span-10 font-medium truncate flex items-center">
+                        {person.userName}
+                        {person._id === userInfo?._id && <span className="ml-2 text-xs bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">You</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
 
         </div>
       </div>
