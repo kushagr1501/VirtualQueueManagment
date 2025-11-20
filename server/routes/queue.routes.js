@@ -65,39 +65,63 @@ export default (io) => {
   });
   
   // Leave queue
-  router.post("/leave/:id", async (req, res) => {
+
+// Leave queue (user voluntarily leaves) — sets cancelledAt
+router.post("/leave/:id", async (req, res) => {
+  try {
     const queueEntry = await Queue.findById(req.params.id);
     if (!queueEntry) {
       return res.status(404).json({ message: "Queue entry not found" });
     }
-    
-    await Queue.findByIdAndUpdate(req.params.id, { status: "cancelled" });
-    
-    // Emit update with the specific queue name
+
+    const updated = await Queue.findByIdAndUpdate(
+      req.params.id,
+      { $set: { status: "cancelled", cancelledAt: new Date() } },
+      { new: true }
+    );
+
+    // Emit update with the specific queue name (waiting list only)
     const updatedQueue = await Queue.find({
       placeId: queueEntry.placeId,
       status: "waiting",
       queueName: queueEntry.queueName
     });
-    
-    io.to(queueEntry.placeId.toString()).emit("queueUpdate", updatedQueue);
-    res.json({ message: "Left queue" });
-  });
 
-  // Serve user (admin only)
-  router.patch("/serve/:id", async (req, res) => {
-    const updated = await Queue.findByIdAndUpdate(req.params.id, { status: "served" }, { new: true });
-    
-    // Get updated queue with the specific queue name
-    const queue = await Queue.find({ 
-      placeId: updated.placeId, 
+    io.to(queueEntry.placeId.toString()).emit("queueUpdate", updatedQueue);
+    res.json({ message: "Left queue", entry: updated });
+  } catch (err) {
+    console.error("Error leaving queue:", err);
+    res.status(500).json({ message: "Failed to leave queue" });
+  }
+});
+
+
+ // Serve user (admin only) — sets servedAt
+router.patch("/serve/:id", async (req, res) => {
+  try {
+    const updated = await Queue.findByIdAndUpdate(
+      req.params.id,
+      { $set: { status: "served", servedAt: new Date() } },
+      { new: true }
+    );
+
+    if (!updated) return res.status(404).json({ message: "Entry not found" });
+
+    // Get updated waiting queue for that queueName/place
+    const queue = await Queue.find({
+      placeId: updated.placeId,
       status: "waiting",
-      queueName: updated.queueName 
+      queueName: updated.queueName
     });
-    
+
     io.to(updated.placeId.toString()).emit("queueUpdate", queue);
     res.json(updated);
-  });
+  } catch (err) {
+    console.error("Error serving user:", err);
+    res.status(500).json({ message: "Failed to serve user" });
+  }
+});
+
   
   // Add new place
   router.post("/places", async (req, res) => {
@@ -113,6 +137,7 @@ export default (io) => {
   });
 
 // delete queue 
+// Mark whole queue as served (preserve history)
 router.delete("/queue/delete-queue/:placeId/:queueName", async (req, res) => {
   const { placeId, queueName } = req.params;
 
@@ -121,27 +146,30 @@ router.delete("/queue/delete-queue/:placeId/:queueName", async (req, res) => {
       placeId,
       queueName,
       status: "waiting",
+      // exclude placeholder entries if you use them:
       userName: { $ne: "__system__" }
     };
 
-    // Update matching entries to "served"
-    const result = await Queue.updateMany(filter, { $set: { status: "served" } });
+    const update = { $set: { status: "served", servedAt: new Date() } };
 
-    // Get remaining waiting entries across all queues for this place (for clients)
+    const result = await Queue.updateMany(filter, update);
+
+    // After marking served, return remaining waiting entries for the place
     const remaining = await Queue.find({ placeId, status: "waiting" });
 
     // Notify clients in the place room with the fresh list
-    io.to(placeId).emit("queueUpdate", remaining);
+    io.to(placeId.toString()).emit("queueUpdate", remaining);
 
     res.json({
-      message: `Queue '${queueName}' marked served (${result.modifiedCount ?? result.nModified ?? 0} entries).`,
-      modifiedCount: result.modifiedCount ?? result.nModified ?? 0,
+      message: `Queue '${queueName}' marked served.`,
+      modifiedCount: result.modifiedCount ?? result.nModified ?? 0
     });
   } catch (error) {
     console.error("Error marking queue served:", error);
     res.status(500).json({ error: "Failed to mark queue as served" });
   }
 });
+
 
   
  
@@ -187,6 +215,40 @@ router.delete("/queue/delete-queue/:placeId/:queueName", async (req, res) => {
 
     res.json(placesWithQueueCount);
   });
+
+// User acknowledges they were served (client voluntary action)
+router.post("/queue/:id/acknowledge", async (req, res) => {
+  try {
+    const entry = await Queue.findById(req.params.id);
+    if (!entry) return res.status(404).json({ message: "Entry not found" });
+
+    // Only acknowledge if it was served (optional: also allow other statuses)
+    if (entry.status !== "served") {
+      return res.status(400).json({ message: "Only served entries can be acknowledged" });
+    }
+
+    const updated = await Queue.findByIdAndUpdate(
+      req.params.id,
+      { $set: { acknowledgedAt: new Date() } },
+      { new: true }
+    );
+
+    // Optionally emit an update — clients mostly care about waiting list
+    const updatedQueue = await Queue.find({
+      placeId: entry.placeId,
+      status: "waiting",
+      queueName: entry.queueName
+    });
+
+    io.to(entry.placeId.toString()).emit("queueUpdate", updatedQueue);
+
+    res.json({ message: "Acknowledged", entry: updated });
+  } catch (err) {
+    console.error("Error acknowledging entry:", err);
+    res.status(500).json({ message: "Failed to acknowledge entry" });
+  }
+});
+
   
   // Find queue entry by verification code
   router.get("/queue/find-by-code/:code", async (req, res) => {
@@ -307,5 +369,6 @@ router.delete("/queue/delete-queue/:placeId/:queueName", async (req, res) => {
   return router;
 
 };
+
 
 
