@@ -136,8 +136,7 @@ router.patch("/serve/:id", async (req, res) => {
     res.status(201).json(place);
   });
 
-// delete queue 
-// Mark whole queue as served (preserve history)
+// Mark whole queue as served (preserve history) and tag reason = "queue_deleted"
 router.delete("/queue/delete-queue/:placeId/:queueName", async (req, res) => {
   const { placeId, queueName } = req.params;
 
@@ -146,11 +145,16 @@ router.delete("/queue/delete-queue/:placeId/:queueName", async (req, res) => {
       placeId,
       queueName,
       status: "waiting",
-      // exclude placeholder entries if you use them:
-      userName: { $ne: "__system__" }
+      userName: { $ne: "__system__" } // if you use placeholders
     };
 
-    const update = { $set: { status: "served", servedAt: new Date() } };
+    const update = {
+      $set: {
+        status: "served",
+        servedAt: new Date(),
+        servedReason: "queue_deleted" // <-- NEW FLAG
+      }
+    };
 
     const result = await Queue.updateMany(filter, update);
 
@@ -161,7 +165,7 @@ router.delete("/queue/delete-queue/:placeId/:queueName", async (req, res) => {
     io.to(placeId.toString()).emit("queueUpdate", remaining);
 
     res.json({
-      message: `Queue '${queueName}' marked served.`,
+      message: `Queue '${queueName}' marked served (deleted).`,
       modifiedCount: result.modifiedCount ?? result.nModified ?? 0
     });
   } catch (error) {
@@ -173,27 +177,7 @@ router.delete("/queue/delete-queue/:placeId/:queueName", async (req, res) => {
 
   
  
-//   router.delete("/queue/delete-queue/:placeId/:queueName", async (req, res) => {
-//   const { placeId, queueName } = req.params;
 
-//   try {
-//     // Delete all people in this queue
-//     await Queue.deleteMany({
-//       placeId,
-//       queueName
-//     });
-
-//     // Return remaining queues (people grouped by queueName)
-//     const remaining = await Queue.find({ placeId, status: "waiting" });
-
-//     io.to(placeId).emit("queueUpdate", remaining);
-
-//     res.json({ message: `Queue '${queueName}' deleted successfully` });
-//   } catch (error) {
-//     console.error("Error deleting queue:", error);
-//     res.status(500).json({ error: "Failed to delete queue" });
-//   }
-// });
 
   // Get all places or places by businessId
   router.get("/places", async (req, res) => {
@@ -369,6 +353,7 @@ router.post("/queue/:id/acknowledge", async (req, res) => {
   return router;
 
 };
+
 
 
 
