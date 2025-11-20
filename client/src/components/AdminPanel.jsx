@@ -173,9 +173,8 @@ function AdminPanel() {
     if (!window.confirm(`Delete queue "${selectedQueue}"? This cannot be undone.`)) return;
 
     try {
-      // call backend to delete the whole queue (keeps your existing API path)
-      // your backend originally used: /api/queue/delete-all/:placeId?queueName=...
-      await axios.delete(`${API}/api/queue/delete-all/${id}?queueName=${encodeURIComponent(selectedQueue)}`);
+
+     await axios.delete(`${API}/api/queue/delete-queue/${id}/${encodeURIComponent(selectedQueue)}`);
 
       // optimistic UI update: remove queueName from list and clear visible queue
       const updatedQueueNames = queueNames.filter((q) => q !== selectedQueue);
@@ -757,5 +756,6 @@ function AdminPanel() {
 }
 
 export default AdminPanel;
+
 
 
