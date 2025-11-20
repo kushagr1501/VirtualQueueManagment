@@ -136,41 +136,55 @@ router.patch("/serve/:id", async (req, res) => {
     res.status(201).json(place);
   });
 
-// Mark whole queue as served (preserve history) and tag reason = "queue_deleted"
+
+  
+// Mark whole queue as served (preserve history) and remove placeholders so queue name vanishes
 router.delete("/queue/delete-queue/:placeId/:queueName", async (req, res) => {
   const { placeId, queueName } = req.params;
 
   try {
+    // 1) Mark all real waiting users in this queue as served
     const filter = {
       placeId,
       queueName,
       status: "waiting",
-      userName: { $ne: "__system__" } // if you use placeholders
+      userName: { $ne: "__system__" } // exclude placeholders
     };
 
     const update = {
       $set: {
         status: "served",
         servedAt: new Date(),
-        servedReason: "queue_deleted" // <-- NEW FLAG
+        servedReason: "queue_deleted"
       }
     };
 
     const result = await Queue.updateMany(filter, update);
 
-    // After marking served, return remaining waiting entries for the place
+    // 2) Remove placeholder / "system" documents (and any placeholder-status docs)
+    //    so the queueName will not show up in distinct() when nothing real remains.
+    await Queue.deleteMany({
+      placeId,
+      queueName,
+      $or: [
+        { userName: "__system__" },
+        { status: "placeholder" }
+      ]
+    });
+
+    // 3) Return remaining waiting entries across the place (all queues)
     const remaining = await Queue.find({ placeId, status: "waiting" });
 
-    // Notify clients in the place room with the fresh list
+    // 4) Notify clients in the place room with the fresh list
     io.to(placeId.toString()).emit("queueUpdate", remaining);
 
     res.json({
-      message: `Queue '${queueName}' marked served (deleted).`,
-      modifiedCount: result.modifiedCount ?? result.nModified ?? 0
+      message: `Queue '${queueName}' deleted (marked served).`,
+      modifiedCount: result.modifiedCount ?? result.nModified ?? 0,
     });
   } catch (error) {
-    console.error("Error marking queue served:", error);
-    res.status(500).json({ error: "Failed to mark queue as served" });
+    console.error("Error marking queue served and removing placeholders:", error);
+    res.status(500).json({ error: "Failed to delete queue" });
   }
 });
 
@@ -353,6 +367,7 @@ router.post("/queue/:id/acknowledge", async (req, res) => {
   return router;
 
 };
+
 
 
 
