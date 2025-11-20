@@ -112,7 +112,7 @@ export default (io) => {
     res.status(201).json(place);
   });
 
-// Mark whole queue as served (don't delete documents)
+// delete queue 
 router.delete("/queue/delete-queue/:placeId/:queueName", async (req, res) => {
   const { placeId, queueName } = req.params;
 
@@ -307,4 +307,5 @@ router.delete("/queue/delete-queue/:placeId/:queueName", async (req, res) => {
   return router;
 
 };
+
 
