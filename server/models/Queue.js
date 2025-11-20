@@ -29,8 +29,10 @@ const QueueSchema = new mongoose.Schema({
 
   // new timestamps
   servedAt: Date,
+  servedReason: { type: String }, // e.g. "served_by_staff" | "queue_deleted" | null
   cancelledAt: Date,
   acknowledgedAt: Date
 });
 
 export default mongoose.model("Queue", QueueSchema);
+
