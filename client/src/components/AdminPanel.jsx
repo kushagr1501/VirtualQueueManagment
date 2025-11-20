@@ -156,17 +156,54 @@ function AdminPanel() {
     }
   };
 
-  const deleteCurrentQueue = async () => {
+  // const deleteCurrentQueue = async () => {
+  //   if (!selectedQueue) return alert("Select a queue first.");
+  //   if (window.confirm(`Delete queue "${selectedQueue}"? This cannot be undone.`)) {
+  //     try {
+  //       await axios.delete(`${API}/api/queue/delete-all/${id}?queueName=${selectedQueue}`);
+  //       fetchData();
+  //     } catch (err) {
+  //       console.error("Failed to delete queue:", err);
+  //     }
+  //   }
+  // };
+    const deleteCurrentQueue = async () => {
     if (!selectedQueue) return alert("Select a queue first.");
-    if (window.confirm(`Delete queue "${selectedQueue}"? This cannot be undone.`)) {
-      try {
-        await axios.delete(`${API}/api/queue/delete-all/${id}?queueName=${selectedQueue}`);
-        fetchData();
-      } catch (err) {
-        console.error("Failed to delete queue:", err);
+
+    if (!window.confirm(`Delete queue "${selectedQueue}"? This cannot be undone.`)) return;
+
+    try {
+      // call backend to delete the whole queue (keeps your existing API path)
+      // your backend originally used: /api/queue/delete-all/:placeId?queueName=...
+      await axios.delete(`${API}/api/queue/delete-all/${id}?queueName=${encodeURIComponent(selectedQueue)}`);
+
+      // optimistic UI update: remove queueName from list and clear visible queue
+      const updatedQueueNames = queueNames.filter((q) => q !== selectedQueue);
+      setQueueNames(updatedQueueNames);
+
+      if (updatedQueueNames.length > 0) {
+        // pick next queue (first in list)
+        setSelectedQueue(updatedQueueNames[0]);
+      } else {
+        // no queues left
+        setSelectedQueue("");
+        setQueue([]); // clear visible queue since queue is deleted
       }
+
+      // small UX: show immediate feedback (optional)
+      // You can set a toast/message here instead of console.log
+      console.log(`Queue "${selectedQueue}" deleted`);
+
+      // re-sync with server to get canonical state and emit updates to socket listeners
+      await fetchData();
+    } catch (err) {
+      console.error("Failed to delete queue:", err);
+      alert("Failed to delete queue. See console for details.");
+      // fallback: try to re-sync UI with latest server state
+      fetchData();
     }
   };
+
 
   const createQueue = async () => {
     if (!newQueueName.trim()) return;
@@ -720,4 +757,5 @@ function AdminPanel() {
 }
 
 export default AdminPanel;
+
 
