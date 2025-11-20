@@ -155,16 +155,14 @@ router.delete("/queue/delete-queue/:placeId/:queueName", async (req, res) => {
     // 2. Delete the system placeholder row for this queue
     await Queue.deleteOne({
       placeId,
-      queueName,
-      userName: "__system__",
-      status: "placeholder"
+      queueName
     });
 
-    // 3. Return remaining queues for UI
-    const remainingQueueNames = await Queue.distinct("queueName", {
-      placeId,
-      userName: { $ne: "__system__" }
-    });
+    // // 3. Return remaining queues for UI
+    // const remainingQueueNames = await Queue.distinct("queueName", {
+    //   placeId,
+    //   userName: { $ne: "__system__" }
+    // });
 
     // 4. Emit updated data to clients
     const remaining = await Queue.find({ placeId, status: "waiting" });
@@ -358,6 +356,7 @@ router.post("/queue/:id/acknowledge", async (req, res) => {
   return router;
 
 };
+
 
 
 
