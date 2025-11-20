@@ -111,53 +111,61 @@ export default (io) => {
     await place.save();
     res.status(201).json(place);
   });
-  
-  // // Delete all entries in queue
-  // router.delete("/queue/delete-all/:placeId", async (req, res) => {
-  //   const { queueName } = req.query;
-  //   const filter = { 
-  //     placeId: req.params.placeId, 
-  //     status: "waiting" 
-  //   };
-    
-  //   // If queueName is provided, only delete entries from that queue
-  //   if (queueName) {
-  //     filter.queueName = queueName;
-  //   }
-    
-  //   await Queue.deleteMany(filter);
-    
-  //   // Return only entries for the specified queue
-  //   const updatedQueue = await Queue.find({ 
-  //     placeId: req.params.placeId, 
-  //     status: "waiting",
-  //     ...(queueName && { queueName })
-  //   });
-    
-  //   io.to(req.params.placeId).emit("queueUpdate", updatedQueue);
-  //   res.json({ message: "Queue cleared" });
-  // });
-  router.delete("/queue/delete-queue/:placeId/:queueName", async (req, res) => {
+
+// Mark whole queue as served (don't delete documents)
+router.delete("/queue/delete-queue/:placeId/:queueName", async (req, res) => {
   const { placeId, queueName } = req.params;
 
   try {
-    // Delete all people in this queue
-    await Queue.deleteMany({
+    const filter = {
       placeId,
-      queueName
-    });
+      queueName,
+      status: "waiting",
+      userName: { $ne: "__system__" }
+    };
 
-    // Return remaining queues (people grouped by queueName)
+    // Update matching entries to "served"
+    const result = await Queue.updateMany(filter, { $set: { status: "served" } });
+
+    // Get remaining waiting entries across all queues for this place (for clients)
     const remaining = await Queue.find({ placeId, status: "waiting" });
 
+    // Notify clients in the place room with the fresh list
     io.to(placeId).emit("queueUpdate", remaining);
 
-    res.json({ message: `Queue '${queueName}' deleted successfully` });
+    res.json({
+      message: `Queue '${queueName}' marked served (${result.modifiedCount ?? result.nModified ?? 0} entries).`,
+      modifiedCount: result.modifiedCount ?? result.nModified ?? 0,
+    });
   } catch (error) {
-    console.error("Error deleting queue:", error);
-    res.status(500).json({ error: "Failed to delete queue" });
+    console.error("Error marking queue served:", error);
+    res.status(500).json({ error: "Failed to mark queue as served" });
   }
 });
+
+  
+ 
+//   router.delete("/queue/delete-queue/:placeId/:queueName", async (req, res) => {
+//   const { placeId, queueName } = req.params;
+
+//   try {
+//     // Delete all people in this queue
+//     await Queue.deleteMany({
+//       placeId,
+//       queueName
+//     });
+
+//     // Return remaining queues (people grouped by queueName)
+//     const remaining = await Queue.find({ placeId, status: "waiting" });
+
+//     io.to(placeId).emit("queueUpdate", remaining);
+
+//     res.json({ message: `Queue '${queueName}' deleted successfully` });
+//   } catch (error) {
+//     console.error("Error deleting queue:", error);
+//     res.status(500).json({ error: "Failed to delete queue" });
+//   }
+// });
 
   // Get all places or places by businessId
   router.get("/places", async (req, res) => {
@@ -299,3 +307,4 @@ export default (io) => {
   return router;
 
 };
+
