@@ -142,30 +142,34 @@ router.delete("/queue/delete-queue/:placeId/:queueName", async (req, res) => {
   const { placeId, queueName } = req.params;
 
   try {
-    // 1. Mark all waiting users as served
+    // 1. Mark all waiting users in this queue as served
     await Queue.updateMany(
       {
         placeId,
         queueName,
         status: "waiting"
       },
-      { $set: { status: "served" } }
+      { $set: { status: "served", servedAt: new Date() } }
     );
 
-    // 2. Delete the system placeholder row for this queue
+    // 2. Delete the system placeholder row for this queue (if exists)
     await Queue.deleteOne({
       placeId,
-      queueName
+      queueName,
+      userName: "__system__",
+      status: "placeholder"
     });
 
-    // // 3. Return remaining queues for UI
-    // const remainingQueueNames = await Queue.distinct("queueName", {
-    //   placeId,
-    //   userName: { $ne: "__system__" }
-    // });
+    // 3. Get remaining queue names for this place
+    const remainingQueueNames = await Queue.distinct("queueName", {
+      placeId,
+    }).then(names => names.filter(name => name !== "__system__"));
 
-    // 4. Emit updated data to clients
-    const remaining = await Queue.find({ placeId, status: "waiting" });
+    // 4. Emit updated waiting queue data to clients
+    const remaining = await Queue.find({ 
+      placeId, 
+      status: "waiting" 
+    });
     io.to(placeId).emit("queueUpdate", remaining);
 
     res.json({
@@ -177,7 +181,6 @@ router.delete("/queue/delete-queue/:placeId/:queueName", async (req, res) => {
     res.status(500).json({ error: "Failed to delete queue" });
   }
 });
-
   
  
 
@@ -356,6 +359,7 @@ router.post("/queue/:id/acknowledge", async (req, res) => {
   return router;
 
 };
+
 
 
 
