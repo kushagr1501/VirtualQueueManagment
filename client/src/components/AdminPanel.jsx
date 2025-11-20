@@ -1,3 +1,4 @@
+// AdminPanel.jsx
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
@@ -78,12 +79,13 @@ function AdminPanel() {
     try {
       const [placeRes, queueRes, queueNamesRes] = await Promise.all([
         axios.get(`${API}/api/places/${id}`),
-        axios.get(`${API}/api/place/${id}?queueName=${selectedQueue}`),
+        axios.get(`${API}/api/place/${id}`, { params: { queueName: selectedQueue } }),
         axios.get(`${API}/api/places/${id}/queues`),
       ]);
       setPlace(placeRes.data);
       setQueue(Array.isArray(queueRes.data) ? queueRes.data : []);
       setQueueNames(Array.isArray(queueNamesRes.data) ? queueNamesRes.data : []);
+      // If selectedQueue is empty, pick first available
       if (!selectedQueue && queueNamesRes.data && queueNamesRes.data.length > 0) {
         setSelectedQueue(queueNamesRes.data[0]);
       }
@@ -129,19 +131,34 @@ function AdminPanel() {
       fetchData();
     } catch (error) {
       console.error("Error serving user:", error);
+      alert("Failed to mark user as served. See console for details.");
     }
   };
 
-  // Remove user from queue
+  // Remove user from queue (tries DELETE endpoint, falls back to leave)
   const removeUser = async (uid) => {
     if (!uid) return;
     if (!window.confirm("Remove this customer from the queue?")) return;
+
     try {
+      // Try delete endpoint first (if you have one)
       await axios.delete(`${API}/api/queue/user/${uid}`);
-      fetchData();
+    } catch (deleteErr) {
+      // If delete endpoint doesn't exist or failed, try leave endpoint
+      try {
+        await axios.post(`${API}/api/leave/${uid}`);
+      } catch (leaveErr) {
+        console.error("Both delete and leave failed:", { deleteErr, leaveErr });
+        alert("Failed to remove user. See console for details.");
+        return;
+      }
+    }
+
+    // Re-sync UI
+    try {
+      await fetchData();
     } catch (err) {
-      console.error("Error removing user", err);
-      alert("Failed to remove user. See console for details.");
+      console.error("Failed to refresh after removal:", err);
     }
   };
 
@@ -156,50 +173,46 @@ function AdminPanel() {
     }
   };
 
-  // const deleteCurrentQueue = async () => {
-  //   if (!selectedQueue) return alert("Select a queue first.");
-  //   if (window.confirm(`Delete queue "${selectedQueue}"? This cannot be undone.`)) {
-  //     try {
-  //       await axios.delete(`${API}/api/queue/delete-all/${id}?queueName=${selectedQueue}`);
-  //       fetchData();
-  //     } catch (err) {
-  //       console.error("Failed to delete queue:", err);
-  //     }
-  //   }
-  // };
- const deleteCurrentQueue = async () => {
-  if (!selectedQueue) return alert("Select a queue first.");
-  if (!window.confirm(`Delete queue "${selectedQueue}"? This cannot be undone.`)) return;
+  // Delete the currently selected queue: mark its waiting entries as served on the backend.
+  // Then remove the queue name from the UI (optimistic) and re-sync.
+  const deleteCurrentQueue = async () => {
+    if (!selectedQueue) return alert("Select a queue first.");
+    if (!window.confirm(`Delete queue "${selectedQueue}"? This cannot be undone.`)) return;
 
-  try {
-    await axios.delete(`${API}/api/queue/delete-queue/${id}/${encodeURIComponent(selectedQueue)}`);
+    const queueToDelete = selectedQueue;
 
-    // optimistic UI update
-    const updatedQueueNames = queueNames.filter((q) => q !== selectedQueue);
-    setQueueNames(updatedQueueNames);
+    try {
+      const encoded = encodeURIComponent(queueToDelete);
+      const resp = await axios.delete(`${API}/api/queue/delete-queue/${id}/${encoded}`);
 
-    if (updatedQueueNames.length > 0) {
-      setSelectedQueue(updatedQueueNames[0]);
-    } else {
-      setSelectedQueue("");
-      setQueue([]);
+      // optimistic UI update: remove the queue name locally
+      const updatedQueueNames = queueNames.filter((q) => q !== queueToDelete);
+      setQueueNames(updatedQueueNames);
+
+      if (updatedQueueNames.length > 0) {
+        setSelectedQueue(updatedQueueNames[0]);
+      } else {
+        setSelectedQueue("");
+        setQueue([]); // clear visible queue since queue is deleted
+      }
+
+      // Console/log success message from server if present
+      console.log(resp.data?.message || `Queue "${queueToDelete}" deleted`);
+
+      // re-sync with server to get canonical state and emit updates to socket listeners
+      await fetchData();
+    } catch (err) {
+      console.error("Failed to delete queue:", err);
+      if (err.response) {
+        console.error("Server response:", err.response.status, err.response.data);
+        alert(`Failed to delete queue (${err.response.status}): ${err.response.data?.message || JSON.stringify(err.response.data)}`);
+      } else {
+        alert("Failed to delete queue. See console for details.");
+      }
+      // fallback: try to re-sync UI with latest server state
+      fetchData();
     }
-
-    await fetchData();
-  } catch (err) {
-    console.error("Failed to delete queue:", err);
-    // show more helpful error info
-    if (err.response) {
-      console.error("Server response:", err.response.status, err.response.data);
-      alert(`Failed to delete queue (${err.response.status}): ${err.response.data?.message || JSON.stringify(err.response.data)}`);
-    } else {
-      alert("Failed to delete queue. See console for details.");
-    }
-    fetchData();
-  }
-};
-
-
+  };
 
   const createQueue = async () => {
     if (!newQueueName.trim()) return;
@@ -263,7 +276,7 @@ function AdminPanel() {
                 <Users className="mr-3 h-5 w-5 group-hover:scale-110 transition-transform" />
                 Queue Management
               </a>
-                  {/* Verify Customers single button */}
+              {/* Verify Customers single button */}
               <button
                 onClick={openVerifyPage}
                 className="w-full text-left flex items-center px-4 py-3.5 text-sm font-medium rounded-xl text-white/90 hover:bg-white/10 hover:backdrop-blur-xl transition-all duration-200"
@@ -287,8 +300,6 @@ function AdminPanel() {
                 <Store className="mr-3 h-5 w-5 group-hover:scale-110 transition-transform" />
                 Business Profile
               </a>
-
-          
 
               <a
                 href="#"
@@ -527,7 +538,8 @@ function AdminPanel() {
                       <button
                         type="button"
                         onClick={deleteCurrentQueue}
-                        className="group inline-flex items-center px-5 py-3 border-2 border-red-200 text-sm font-bold rounded-xl text-red-700 bg-red-50 hover:bg-red-100 hover:border-red-300 focus:outline-none focus:ring-4 focus:ring-red-500/20 transition-all duration-200 shadow-lg"
+                        disabled={!selectedQueue}
+                        className={`group inline-flex items-center px-5 py-3 border-2 ${!selectedQueue ? "border-gray-200 text-gray-400 bg-gray-50" : "border-red-200 text-red-700 bg-red-50"} text-sm font-bold rounded-xl hover:shadow-lg transition-all duration-200`}
                       >
                         <Trash2 className="h-5 w-5 mr-2 group-hover:scale-110 transition-transform" />
                         Delete Queue
@@ -753,7 +765,3 @@ function AdminPanel() {
 }
 
 export default AdminPanel;
-
-
-
-
