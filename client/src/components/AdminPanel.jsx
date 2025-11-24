@@ -1525,6 +1525,3 @@ function AdminPanel() {
 
 export default AdminPanel;
 
-export default AdminPanel;
-
-
