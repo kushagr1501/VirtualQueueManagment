@@ -766,6 +766,7 @@
 
 // export default AdminPanel;
 // AdminPanel.jsx
+// AdminPanel.jsx
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
@@ -823,7 +824,6 @@ function AdminPanel() {
   useEffect(() => {
     if (!id) return;
 
-    // join room and set up listener
     socket.emit("joinPlaceRoom", id);
     fetchData();
 
@@ -840,13 +840,14 @@ function AdminPanel() {
     try {
       const [placeRes, queueRes, queueNamesRes] = await Promise.all([
         axios.get(`${API}/api/places/${id}`),
-        axios.get(`${API}/api/place/${id}`, { params: { queueName: selectedQueue } }),
+        axios.get(`${API}/api/place/${id}`, {
+          params: { queueName: selectedQueue },
+        }),
         axios.get(`${API}/api/places/${id}/queues`),
       ]);
       setPlace(placeRes.data);
       setQueue(Array.isArray(queueRes.data) ? queueRes.data : []);
       setQueueNames(Array.isArray(queueNamesRes.data) ? queueNamesRes.data : []);
-      // If selectedQueue is empty, pick first available
       if (!selectedQueue && queueNamesRes.data && queueNamesRes.data.length > 0) {
         setSelectedQueue(queueNamesRes.data[0]);
       }
@@ -896,7 +897,6 @@ function AdminPanel() {
     }
   };
 
-  // Remove user from queue
   const removeUser = async (uid) => {
     if (!uid) return;
     if (!window.confirm("Remove this customer from the queue?")) return;
@@ -933,13 +933,16 @@ function AdminPanel() {
 
   const deleteCurrentQueue = async () => {
     if (!selectedQueue) return alert("Select a queue first.");
-    if (!window.confirm(`Delete queue "${selectedQueue}"? This cannot be undone.`)) return;
+    if (!window.confirm(`Delete queue "${selectedQueue}"? This cannot be undone.`))
+      return;
 
     const queueToDelete = selectedQueue;
 
     try {
       const encoded = encodeURIComponent(queueToDelete);
-      const resp = await axios.delete(`${API}/api/queue/delete-queue/${id}/${encoded}`);
+      const resp = await axios.delete(
+        `${API}/api/queue/delete-queue/${id}/${encoded}`
+      );
 
       const updatedQueueNames = queueNames.filter((q) => q !== queueToDelete);
       setQueueNames(updatedQueueNames);
@@ -952,12 +955,10 @@ function AdminPanel() {
       }
 
       console.log(resp.data?.message || `Queue "${queueToDelete}" deleted`);
-
       await fetchData();
     } catch (err) {
       console.error("Failed to delete queue:", err);
       if (err.response) {
-        console.error("Server response:", err.response.status, err.response.data);
         alert(
           `Failed to delete queue (${err.response.status}): ${
             err.response.data?.message || JSON.stringify(err.response.data)
@@ -1003,40 +1004,92 @@ function AdminPanel() {
     : queue;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-100 via-amber-100 to-emerald-100 flex items-center justify-center px-4 py-6">
-      <div className="w-full max-w-6xl bg-[#FFF8E5] border-[3px] border-black shadow-[6px_6px_0_0_rgba(0,0,0,0.4)] flex flex-col max-h-[90vh]">
-        {/* HEADER */}
-        <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 px-5 md:px-7 py-4 border-b-[3px] border-black bg-[#FFE7B3]">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 bg-black text-[#FFF5D9] flex items-center justify-center text-[11px] font-bold uppercase tracking-[0.15em]">
-              Q
+    <div className="min-h-screen bg-gradient-to-br from-orange-100 via-amber-100 to-emerald-100 flex">
+      {/* FULL-HEIGHT SIDEBAR */}
+      <aside className="w-60 md:w-72 border-r-[3px] border-black bg-[#FFE7B3] flex flex-col">
+        {/* Brand */}
+        <div className="px-4 py-4 border-b-[3px] border-black flex items-center gap-3 bg-[#FFD966]">
+          <div className="h-9 w-9 bg-black text-[#FFF5D9] flex items-center justify-center text-[11px] font-bold uppercase tracking-[0.15em]">
+            Q
+          </div>
+          <div className="leading-tight">
+            <div className="text-sm font-black tracking-tight">
+              QueueBoard Admin
             </div>
-            <div className="leading-tight">
-              <div className="text-sm font-black tracking-tight">
-                QueueBoard · Admin
-              </div>
-              <div className="text-[11px] text-slate-800">
-                {place.name || "Loading place..."}
-              </div>
+            <div className="text-[11px] text-slate-800">
+              {place.name || "Loading..."}
             </div>
           </div>
+        </div>
 
-          <div className="flex flex-wrap items-center gap-2 md:gap-3">
-            <div className="hidden sm:flex items-center gap-2 text-[11px] text-slate-800 border-[2px] border-black bg-white px-3 py-1.5">
-              <Clock size={14} />
-              <span>
-                Today in queue: <b>{queue.length}</b>
-              </span>
-            </div>
+        {/* Nav */}
+        <div className="flex-1 px-3 py-3 space-y-2 overflow-y-auto text-[13px]">
+          <div className="border-[2px] border-black bg-white px-3 py-2 flex items-center gap-2">
+            <Users size={14} />
+            <span className="font-semibold">Queue management</span>
+          </div>
 
-            <button
-              onClick={openVerifyPage}
-              className="flex items-center gap-2 border-[2px] border-black bg-white px-3 py-1.5 text-[12px] font-semibold hover:-translate-y-[1px] transition-transform"
-            >
-              <Check size={14} />
-              <span>Verify customers</span>
-            </button>
+          <button
+            onClick={openVerifyPage}
+            className="w-full border-[2px] border-black bg-white px-3 py-2 flex items-center gap-2 hover:-translate-y-[1px] transition-transform"
+          >
+            <Check size={14} />
+            <span>Verify customers</span>
+          </button>
 
+          <div className="border-[2px] border-black bg-white px-3 py-2 flex items-center gap-2 opacity-80">
+            <BarChart2 size={14} />
+            <span>Analytics (soon)</span>
+          </div>
+
+          <div className="border-[2px] border-black bg-white px-3 py-2 flex items-center gap-2 opacity-80">
+            <Store size={14} />
+            <span>Business profile</span>
+          </div>
+
+          <div className="border-[2px] border-black bg-white px-3 py-2 flex items-center gap-2 opacity-80">
+            <Bell size={14} />
+            <span>Notifications</span>
+          </div>
+
+          <div className="border-[2px] border-black bg-white px-3 py-2 flex items-center gap-2 opacity-80">
+            <Settings size={14} />
+            <span>Settings</span>
+          </div>
+        </div>
+
+        {/* Sidebar footer */}
+        <div className="px-3 py-3 border-t-[3px] border-black bg-[#FFF5D0] text-[11px] space-y-2">
+          <div className="flex items-center gap-2 border-[2px] border-black bg-white px-2 py-1">
+            <Clock size={12} />
+            <span>
+              Today in queue: <b>{queue.length}</b>
+            </span>
+          </div>
+          <button
+            onClick={logout}
+            className="w-full border-[2px] border-black bg-[#FECACA] px-3 py-1.5 flex items-center justify-center gap-2 text-[12px] font-semibold hover:-translate-y-[1px] transition-transform"
+          >
+            <LogOut size={14} />
+            <span>Logout</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* MAIN PANEL */}
+      <div className="flex-1 flex flex-col bg-[#FFF8E5] border-l-[3px] border-black">
+        {/* Top bar inside main */}
+        <header className="px-5 md:px-7 py-4 border-b-[3px] border-black flex flex-col md:flex-row gap-3 md:items-center md:justify-between bg-[#FFF5D0]">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-black leading-snug">
+              Live queue dashboard
+            </h1>
+            <p className="text-[12px] text-slate-800 max-w-md">
+              Manage walk-ins and appointments from one place.{" "}
+              <span className="font-semibold">No shouting “next!” required.</span>
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={manualRefresh}
               className="flex items-center gap-2 border-[2px] border-black bg-white px-3 py-1.5 text-[12px] font-semibold hover:-translate-y-[1px] transition-transform"
@@ -1048,293 +1101,288 @@ function AdminPanel() {
               )}
               <span>Refresh</span>
             </button>
-
             <button
-              onClick={logout}
+              onClick={deletePlace}
               className="flex items-center gap-2 border-[2px] border-black bg-[#FECACA] px-3 py-1.5 text-[12px] font-semibold hover:-translate-y-[1px] transition-transform"
             >
-              <LogOut size={14} />
-              <span>Logout</span>
+              <Trash2 size={14} />
+              <span>Delete place</span>
             </button>
           </div>
         </header>
 
-        {/* MAIN */}
-        <main className="flex-1 overflow-hidden flex flex-col">
-          <div className="flex-1 overflow-y-auto px-5 md:px-7 py-5 space-y-6">
-            {/* Top summary row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="border-[2px] border-black bg-white px-4 py-3 flex items-center gap-3">
-                <div className="h-9 w-9 flex items-center justify-center border-[2px] border-black bg-[#FFF8E5]">
-                  <Users size={16} />
-                </div>
-                <div className="text-[12px]">
-                  <div className="font-semibold">Current queue</div>
-                  <div>{queue.length} waiting</div>
-                </div>
+        {/* Scrollable content */}
+        <main className="flex-1 overflow-y-auto px-5 md:px-7 py-5 space-y-6">
+          {/* Summary row */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="border-[2px] border-black bg-white px-4 py-3 flex items-center gap-3">
+              <div className="h-9 w-9 flex items-center justify-center border-[2px] border-black bg-[#FFF8E5]">
+                <Users size={16} />
               </div>
-              <div className="border-[2px] border-black bg-white px-4 py-3 flex items-center gap-3">
-                <div className="h-9 w-9 flex items-center justify-center border-[2px] border-black bg-[#FFF8E5]">
-                  <Store size={16} />
-                </div>
-                <div className="text-[12px]">
-                  <div className="font-semibold">Place</div>
-                  <div className="truncate">{place.location || "—"}</div>
-                </div>
+              <div className="text-[12px]">
+                <div className="font-semibold">Current queue</div>
+                <div>{queue.length} waiting</div>
               </div>
-              <div className="border-[2px] border-black bg-white px-4 py-3 flex items-center gap-3">
-                <div className="h-9 w-9 flex items-center justify-center border-[2px] border-black bg-[#FFF8E5]">
-                  <BarChart2 size={16} />
-                </div>
-                <div className="text-[12px]">
-                  <div className="font-semibold">Mode</div>
-                  <div>Live queue dashboard</div>
+            </div>
+            <div className="border-[2px] border-black bg-white px-4 py-3 flex items-center gap-3">
+              <div className="h-9 w-9 flex items-center justify-center border-[2px] border-black bg-[#FFF8E5]">
+                <Store size={16} />
+              </div>
+              <div className="text-[12px]">
+                <div className="font-semibold">Place</div>
+                <div className="truncate">
+                  {place.location || "(location not set)"}
                 </div>
               </div>
             </div>
-
-            {/* Queue controls */}
-            <div className="border-[2px] border-black bg-[#FFE7B3] px-4 py-4 space-y-4">
-              <div className="flex flex-col md:flex-row gap-4 md:items-end md:justify-between">
-                <div className="flex-1 space-y-1">
-                  <label
-                    htmlFor="queue-select"
-                    className="text-[11px] font-semibold uppercase tracking-[0.12em]"
-                  >
-                    Active queue
-                  </label>
-                  <select
-                    id="queue-select"
-                    className="w-full border-[2px] border-black bg-white px-3 py-2 text-sm font-medium"
-                    value={selectedQueue}
-                    onChange={(e) => setSelectedQueue(e.target.value)}
-                  >
-                    {queueNames.map((q) => (
-                      <option key={q} value={q}>
-                        {q}
-                      </option>
-                    ))}
-                    {queueNames.length === 0 && (
-                      <option disabled>No queues available</option>
-                    )}
-                  </select>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setCreateQueueModalOpen(true)}
-                    className="inline-flex items-center gap-2 border-[2px] border-black bg-white px-3 py-2 text-[12px] font-semibold hover:-translate-y-[1px] transition-transform"
-                  >
-                    <Plus size={14} />
-                    <span>New queue</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAddUserModalOpen(true)}
-                    className="inline-flex items-center gap-2 border-[2px] border-black bg-[#22C55E] px-3 py-2 text-[12px] font-semibold hover:-translate-y-[1px] transition-transform"
-                  >
-                    <Users size={14} />
-                    <span>Add customer</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={deleteCurrentQueue}
-                    disabled={!selectedQueue}
-                    className={`inline-flex items-center gap-2 border-[2px] border-black px-3 py-2 text-[12px] font-semibold hover:-translate-y-[1px] transition-transform ${
-                      !selectedQueue
-                        ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                        : "bg-[#FECACA] text-red-700"
-                    }`}
-                  >
-                    <Trash2 size={14} />
-                    <span>Delete queue</span>
-                  </button>
-                </div>
+            <div className="border-[2px] border-black bg-white px-4 py-3 flex items-center gap-3">
+              <div className="h-9 w-9 flex items-center justify-center border-[2px] border-black bg-[#FFF8E5]">
+                <BarChart2 size={16} />
               </div>
-            </div>
-
-            {/* Queue card */}
-            <div className="border-[2px] border-black bg-white flex flex-col min-h-[260px]">
-              {/* Header inside card */}
-              <div className="px-4 py-3 border-b-[2px] border-black flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
-                <div>
-                  <h2 className="text-lg font-black">
-                    Queue:{" "}
-                    <span className="underline underline-offset-2">
-                      {selectedQueue || "No queue selected"}
-                    </span>
-                  </h2>
-                  <p className="text-[12px] text-slate-700">
-                    {queue.length}{" "}
-                    {queue.length === 1 ? "customer waiting" : "customers waiting"}
-                  </p>
-                </div>
-                <div className="w-full md:w-72">
-                  <div className="flex items-center border-[2px] border-black bg-[#FFF8E5] px-3 py-2">
-                    <Search size={14} className="mr-2 text-slate-700" />
-                    <input
-                      type="text"
-                      className="w-full text-sm bg-transparent outline-none placeholder:text-slate-400"
-                      placeholder="Search customers..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                  </div>
-                </div>
+              <div className="text-[12px]">
+                <div className="font-semibold">Mode</div>
+                <div>Live queue view</div>
               </div>
-
-              {/* Content */}
-              {loading ? (
-                <div className="flex-1 flex flex-col items-center justify-center gap-3 py-8">
-                  <div className="w-10 h-10 border-[3px] border-black border-t-transparent rounded-full animate-spin" />
-                  <p className="text-sm text-slate-700">Loading queue data...</p>
-                </div>
-              ) : filteredQueue.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center gap-3 py-8 px-4 text-center">
-                  <div className="h-20 w-20 border-[3px] border-black bg-[#FFE7B3] flex items-center justify-center">
-                    <Users size={32} />
-                  </div>
-                  <h3 className="text-lg font-black">No customers</h3>
-                  <p className="text-[13px] text-slate-700 max-w-sm">
-                    {searchQuery
-                      ? "No customers match your search."
-                      : "Start by adding customers to this queue."}
-                  </p>
-                  {!searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setAddUserModalOpen(true)}
-                      className="mt-1 inline-flex items-center gap-2 border-[2px] border-black bg-[#FB923C] px-4 py-2 text-[12px] font-semibold hover:-translate-y-[1px] transition-transform"
-                    >
-                      <Plus size={14} />
-                      <span>Add customer</span>
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <div className="flex-1 overflow-x-auto">
-                  <table className="min-w-full text-left text-sm">
-                    <thead>
-                      <tr className="bg-[#FFF5D0] border-b-[2px] border-black">
-                        <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.12em]">
-                          Position
-                        </th>
-                        <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.12em]">
-                          Customer
-                        </th>
-                        <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.12em]">
-                          Est. Wait
-                        </th>
-                        <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.12em] text-center">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredQueue.map((user, index) => (
-                        <tr
-                          key={user._id}
-                          className="border-b border-slate-200 hover:bg-[#FFF8E5]"
-                        >
-                          <td className="px-4 py-3 align-middle">
-                            <div className="inline-flex items-center justify-center h-8 w-8 rounded-xl border-[2px] border-black bg-[#FFE7B3] text-xs font-bold">
-                              {index + 1}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 align-middle">
-                            <div className="flex items-center gap-3">
-                              <div className="h-9 w-9 rounded-xl border-[2px] border-black bg-[#FFF5D0] flex items-center justify-center">
-                                <span className="text-sm font-bold">
-                                  {(user.userName || "U")
-                                    .charAt(0)
-                                    .toUpperCase()}
-                                </span>
-                              </div>
-                              <div>
-                                <div className="text-sm font-semibold">
-                                  {user.userName}
-                                </div>
-                                <div className="text-[11px] text-slate-600">
-                                  Added{" "}
-                                  {new Date(
-                                    user.createdAt || Date.now()
-                                  ).toLocaleTimeString()}
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 align-middle">
-                            <div className="flex items-center gap-2">
-                              <div className="h-7 w-7 rounded-lg border-[2px] border-black bg-[#DCFCE7] flex items-center justify-center">
-                                <Clock size={14} />
-                              </div>
-                              <span className="text-sm font-semibold">
-                                {getWaitEstimate(index + 1)}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 align-middle">
-                            <div className="flex items-center justify-center gap-2">
-                              {user.isVerified ? (
-                                <button
-                                  className="inline-flex items-center gap-2 border-[2px] border-black bg-[#22C55E] px-3 py-1.5 text-[12px] font-semibold hover:-translate-y-[1px] transition-transform"
-                                  onClick={() => serveUser(user._id)}
-                                >
-                                  <Check size={14} />
-                                  <span>Serve</span>
-                                </button>
-                              ) : (
-                                <span className="inline-flex items-center px-3 py-1.5 text-[11px] font-semibold border-[2px] border-black bg-[#FEF3C7] text-yellow-800">
-                                  Needs verification
-                                </span>
-                              )}
-
-                              <button
-                                title="Remove customer"
-                                onClick={() => removeUser(user._id)}
-                                className="inline-flex items-center justify-center border-[2px] border-black bg-[#FECACA] px-2.5 py-1.5 text-[12px] hover:-translate-y-[1px] transition-transform"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
             </div>
           </div>
 
-          {/* FOOTER */}
-          <footer className="px-5 md:px-7 py-3 border-t-[3px] border-black bg-[#FFF5D0] text-[11px] text-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <div className="h-7 w-7 bg-black text-[#FFF5D9] flex items-center justify-center text-[10px] font-bold uppercase tracking-[0.12em]">
-                Q
+          {/* Queue controls */}
+          <div className="border-[2px] border-black bg-[#FFE7B3] px-4 py-4 space-y-4">
+            <div className="flex flex-col md:flex-row gap-4 md:items-end md:justify-between">
+              <div className="flex-1 space-y-1">
+                <label className="text-[11px] font-semibold uppercase tracking-[0.12em]">
+                  Active queue
+                </label>
+                <select
+                  className="w-full border-[2px] border-black bg-white px-3 py-2 text-sm font-medium"
+                  value={selectedQueue}
+                  onChange={(e) => setSelectedQueue(e.target.value)}
+                >
+                  {queueNames.map((q) => (
+                    <option key={q} value={q}>
+                      {q}
+                    </option>
+                  ))}
+                  {queueNames.length === 0 && (
+                    <option disabled>No queues available</option>
+                  )}
+                </select>
               </div>
-              <div className="leading-tight">
-                <div className="font-semibold">QueueBoard Admin</div>
-                <div>Handle queues, don&apos;t fight them.</div>
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCreateQueueModalOpen(true)}
+                  className="inline-flex items-center gap-2 border-[2px] border-black bg-white px-3 py-2 text-[12px] font-semibold hover:-translate-y-[1px] transition-transform"
+                >
+                  <Plus size={14} />
+                  <span>New queue</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAddUserModalOpen(true)}
+                  className="inline-flex items-center gap-2 border-[2px] border-black bg-[#22C55E] px-3 py-2 text-[12px] font-semibold hover:-translate-y-[1px] transition-transform"
+                >
+                  <Users size={14} />
+                  <span>Add customer</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={deleteCurrentQueue}
+                  disabled={!selectedQueue}
+                  className={`inline-flex items-center gap-2 border-[2px] border-black px-3 py-2 text-[12px] font-semibold hover:-translate-y-[1px] transition-transform ${
+                    !selectedQueue
+                      ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                      : "bg-[#FECACA] text-red-700"
+                  }`}
+                >
+                  <Trash2 size={14} />
+                  <span>Delete queue</span>
+                </button>
               </div>
             </div>
-            <div className="flex gap-3 flex-wrap">
-              <button className="underline underline-offset-2 text-left">
-                Help / FAQ
-              </button>
-              <button
-                className="underline underline-offset-2 text-left"
-                onClick={deletePlace}
-              >
-                Delete this place
-              </button>
-              <button className="underline underline-offset-2 text-left">
-                Settings
-              </button>
+          </div>
+
+          {/* Queue table/card */}
+          <div className="border-[2px] border-black bg-white flex flex-col min-h-[240px]">
+            {/* header inside card */}
+            <div className="px-4 py-3 border-b-[2px] border-black flex flex-col md:flex-row gap-3 md:items-center md:justify-between bg-[#FFF5D0]">
+              <div>
+                <h2 className="text-lg font-black">
+                  Queue:{" "}
+                  <span className="underline underline-offset-2">
+                    {selectedQueue || "No queue selected"}
+                  </span>
+                </h2>
+                <p className="text-[12px] text-slate-700">
+                  {queue.length}{" "}
+                  {queue.length === 1 ? "customer waiting" : "customers waiting"}
+                </p>
+              </div>
+              <div className="w-full md:w-72">
+                <div className="flex items-center border-[2px] border-black bg-[#FFF8E5] px-3 py-2">
+                  <Search size={14} className="mr-2 text-slate-700" />
+                  <input
+                    type="text"
+                    className="w-full text-sm bg-transparent outline-none placeholder:text-slate-400"
+                    placeholder="Search customers..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+              </div>
             </div>
-          </footer>
+
+            {/* content */}
+            {loading ? (
+              <div className="flex-1 flex flex-col items-center justify-center gap-3 py-8">
+                <div className="w-10 h-10 border-[3px] border-black border-t-transparent rounded-full animate-spin" />
+                <p className="text-sm text-slate-700">Loading queue data...</p>
+              </div>
+            ) : filteredQueue.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center gap-3 py-8 px-4 text-center">
+                <div className="h-20 w-20 border-[3px] border-black bg-[#FFE7B3] flex items-center justify-center">
+                  <Users size={32} />
+                </div>
+                <h3 className="text-lg font-black">No customers</h3>
+                <p className="text-[13px] text-slate-700 max-w-sm">
+                  {searchQuery
+                    ? "No customers match your search."
+                    : "Start by adding customers to this queue."}
+                </p>
+                {!searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setAddUserModalOpen(true)}
+                    className="mt-1 inline-flex items-center gap-2 border-[2px] border-black bg-[#FB923C] px-4 py-2 text-[12px] font-semibold hover:-translate-y-[1px] transition-transform"
+                  >
+                    <Plus size={14} />
+                    <span>Add customer</span>
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="flex-1 overflow-x-auto">
+                <table className="min-w-full text-left text-sm">
+                  <thead>
+                    <tr className="bg-[#FFF5D0] border-b-[2px] border-black">
+                      <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.12em]">
+                        Position
+                      </th>
+                      <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.12em]">
+                        Customer
+                      </th>
+                      <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.12em]">
+                        Est. wait
+                      </th>
+                      <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.12em] text-center">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredQueue.map((user, index) => (
+                      <tr
+                        key={user._id}
+                        className="border-b border-slate-200 hover:bg-[#FFF8E5]"
+                      >
+                        <td className="px-4 py-3 align-middle">
+                          <div className="inline-flex items-center justify-center h-8 w-8 rounded-xl border-[2px] border-black bg-[#FFE7B3] text-xs font-bold">
+                            {index + 1}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 align-middle">
+                          <div className="flex items-center gap-3">
+                            <div className="h-9 w-9 rounded-xl border-[2px] border-black bg-[#FFF5D0] flex items-center justify-center">
+                              <span className="text-sm font-bold">
+                                {(user.userName || "U")
+                                  .charAt(0)
+                                  .toUpperCase()}
+                              </span>
+                            </div>
+                            <div>
+                              <div className="text-sm font-semibold">
+                                {user.userName}
+                              </div>
+                              <div className="text-[11px] text-slate-600">
+                                Added{" "}
+                                {new Date(
+                                  user.createdAt || Date.now()
+                                ).toLocaleTimeString()}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 align-middle">
+                          <div className="flex items-center gap-2">
+                            <div className="h-7 w-7 rounded-lg border-[2px] border-black bg-[#DCFCE7] flex items-center justify-center">
+                              <Clock size={14} />
+                            </div>
+                            <span className="text-sm font-semibold">
+                              {getWaitEstimate(index + 1)}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 align-middle">
+                          <div className="flex items-center justify-center gap-2">
+                            {user.isVerified ? (
+                              <button
+                                className="inline-flex items-center gap-2 border-[2px] border-black bg-[#22C55E] px-3 py-1.5 text-[12px] font-semibold hover:-translate-y-[1px] transition-transform"
+                                onClick={() => serveUser(user._id)}
+                              >
+                                <Check size={14} />
+                                <span>Serve</span>
+                              </button>
+                            ) : (
+                              <span className="inline-flex items-center px-3 py-1.5 text-[11px] font-semibold border-[2px] border-black bg-[#FEF3C7] text-yellow-800">
+                                Needs verification
+                              </span>
+                            )}
+
+                            <button
+                              title="Remove customer"
+                              onClick={() => removeUser(user._id)}
+                              className="inline-flex items-center justify-center border-[2px] border-black bg-[#FECACA] px-2.5 py-1.5 text-[12px] hover:-translate-y-[1px] transition-transform"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </main>
+
+        {/* FOOTER */}
+        <footer className="px-5 md:px-7 py-3 border-t-[3px] border-black bg-[#FFF5D0] text-[11px] text-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <div className="h-7 w-7 bg-black text-[#FFF5D9] flex items-center justify-center text-[10px] font-bold uppercase tracking-[0.12em]">
+              Q
+            </div>
+          <div className="leading-tight">
+              <div className="font-semibold">QueueBoard Admin</div>
+              <div>Handle queues, don&apos;t fight them.</div>
+            </div>
+          </div>
+          <div className="flex gap-3 flex-wrap">
+            <button className="underline underline-offset-2 text-left">
+              Help / FAQ
+            </button>
+            <button
+              className="underline underline-offset-2 text-left"
+              onClick={deletePlace}
+            >
+              Delete this place
+            </button>
+            <button className="underline underline-offset-2 text-left">
+              Settings
+            </button>
+          </div>
+        </footer>
       </div>
 
       {/* Add User Modal */}
@@ -1441,7 +1489,7 @@ function AdminPanel() {
                   type="text"
                   name="new-queue"
                   id="new-queue"
-                  className="w-full border-[2px] border-black bg.white px-3 py-2 text-sm outline-none placeholder:text-slate-400 bg-white"
+                  className="w-full border-[2px] border-black bg-white px-3 py-2 text-sm outline-none placeholder:text-slate-400"
                   placeholder="Enter queue name"
                   value={newQueueName}
                   onChange={(e) => setNewQueueName(e.target.value)}
@@ -1476,4 +1524,7 @@ function AdminPanel() {
 }
 
 export default AdminPanel;
+
+export default AdminPanel;
+
 
