@@ -308,13 +308,13 @@
 // }
 
 // export default VerifyUser;
-
 import React, { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import {
   Search,
   User,
   CheckCircle,
+  XCircle,
   Clock,
   Award,
   AlertCircle,
@@ -341,7 +341,7 @@ function VerifyUser() {
     if (savedHistory) {
       try {
         setHistory(JSON.parse(savedHistory));
-      } catch {
+      } catch (e) {
         localStorage.removeItem("verificationHistory");
       }
     }
@@ -372,7 +372,7 @@ function VerifyUser() {
         setHistory(newHistory);
         localStorage.setItem("verificationHistory", JSON.stringify(newHistory));
       }
-    } catch {
+    } catch (err) {
       setResult(null);
       setError("Code not found or invalid.");
     } finally {
@@ -430,143 +430,123 @@ function VerifyUser() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-100 via-amber-100 to-emerald-100 flex items-center justify-center px-4 py-8">
-      <div className="w-full max-w-xl">
-        {/* little brand strip */}
-        <div className="mb-3 flex items-center gap-2 text-[11px] text-slate-800">
-          <div className="h-7 w-7 bg-black text-[#FFF5D9] flex items-center justify-center text-[10px] font-bold uppercase tracking-[0.12em]">
-            Q
-          </div>
-          <div className="leading-tight">
-            <div className="font-semibold">QueueBoard · Staff</div>
-            <div>Verification screen – code se hi entry</div>
-          </div>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-orange-50 to-green-50 flex items-center justify-center px-4 py-16">
+      <div className="w-full max-w-3xl scale-[1.12] md:scale-[1.18]">
 
-        {/* success toast */}
         {success && (
-          <div className="mb-4">
-            <div className="border-[3px] border-black bg-[#BBF7D0] text-slate-900 px-4 py-3 flex items-center gap-2 shadow-[4px_4px_0_0_rgba(0,0,0,0.4)]">
-              <CheckCircle size={20} className="text-green-700" />
-              <span className="text-sm font-semibold">
-                Customer verified – aage bhej sakte ho ✅
-              </span>
+          <div className="mb-6 transform transition-all animate-bounce">
+            <div className="bg-green-600 text-white p-4 rounded-xl shadow-xl flex items-center justify-center gap-3 text-lg font-semibold">
+              <CheckCircle size={28} />
+              Successfully Verified!
             </div>
           </div>
         )}
 
-        {/* main card */}
-        <div className="bg-[#FFF8E5] border-[3px] border-black shadow-[6px_6px_0_0_rgba(0,0,0,0.4)]">
-          {/* header */}
-          <div className="px-4 py-3 border-b-[3px] border-black bg-[#FFD966] flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-black tracking-tight">
-                Verify customer code
-              </h2>
-              <p className="text-[11px] text-slate-800">
-                6-digit code bolo, yahan type karo, phir verify karo.
-              </p>
-            </div>
+        <div className="bg-white rounded-3xl shadow-2xl border-4 border-black/10 overflow-hidden">
+
+          {/* HEADER */}
+          <div className="bg-amber-300 p-10 border-b-4 border-black/20">
+            <h2 className="text-3xl font-extrabold flex items-center justify-center gap-3 tracking-wide text-black">
+              <CheckCircle size={34} />
+              Verify Customer Code
+            </h2>
+            <p className="text-black/60 text-center mt-2 text-lg">
+              6-digit code bolo, yahan type karo, phir verify karo.
+            </p>
           </div>
 
-          {/* body */}
-          <div className="p-4 space-y-4">
-            {/* search input */}
-            <div className="space-y-2">
-              <label className="text-[11px] font-semibold uppercase tracking-[0.12em]">
-                Verification code
-              </label>
-              <div className="flex border-[2px] border-black bg-white">
-                <div className="px-3 flex items-center border-r-[2px] border-black bg-[#FFF5D0]">
-                  <Search size={16} className="text-slate-800" />
+          {/* CONTENT */}
+          <div className="p-10">
+
+            {/* SEARCH BAR */}
+            <div className="relative mb-10">
+              <div className="flex shadow-lg rounded-2xl overflow-hidden border-2 border-black/20">
+                <div className="bg-gray-100 flex items-center justify-center px-6">
+                  <Search size={24} className="text-gray-500" />
                 </div>
+
                 <input
                   ref={inputRef}
                   value={code}
                   onChange={(e) => setCode(e.target.value.toUpperCase())}
                   onKeyPress={handleKeyPress}
-                  placeholder="Enter 6-digit code"
-                  className="w-full px-3 py-2 text-lg font-mono outline-none placeholder:text-slate-400"
+                  placeholder="Enter 6-digit verification code"
                   maxLength={6}
+                  className="w-full px-6 py-5 text-xl border-0 focus:ring-0 font-mono"
                 />
+
                 <button
                   onClick={handleSearch}
                   disabled={!code.trim() || loading}
-                  className="px-4 py-2 text-sm font-semibold border-l-[2px] border-black bg-[#FB923C] hover:bg-[#F97316] disabled:opacity-60 flex items-center gap-1"
+                  className="bg-black text-white px-10 py-5 text-lg font-semibold hover:bg-gray-800 transition disabled:opacity-50 flex items-center gap-2"
                 >
-                  {loading ? (
-                    <Loader size={14} className="animate-spin" />
-                  ) : (
-                    "Search"
-                  )}
+                  {loading ? <Loader size={20} className="animate-spin" /> : "Search"}
                 </button>
               </div>
+
               {error && (
-                <div className="flex items-center gap-1 text-[12px] text-red-700 mt-1">
-                  <AlertCircle size={14} />
-                  <span>{error}</span>
+                <div className="mt-3 text-red-600 flex items-center gap-2">
+                  <AlertCircle size={18} />
+                  <span className="text-sm">{error}</span>
                 </div>
               )}
             </div>
 
-            {/* result */}
+            {/* RESULT */}
             {result && (
-              <div className="mt-2 border-[2px] border-black bg-white p-3 space-y-3">
-                <div className="flex items-start justify-between">
-                  <h3 className="text-sm font-bold flex items-center gap-2">
-                    <User size={16} />
-                    Customer details
+              <div className="bg-white border-2 border-black/10 rounded-2xl p-8 shadow-md">
+
+                <div className="flex justify-between items-start mb-6">
+                  <h3 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
+                    <User size={24} />
+                    Customer Details
                   </h3>
+
                   <div
-                    className={`px-2 py-1 text-[10px] font-semibold rounded-full border-[2px] border-black ${
+                    className={`px-3 py-1.5 rounded-full text-sm font-bold ${
                       result.status === "waiting"
-                        ? "bg-[#FEF3C7]"
+                        ? "bg-yellow-200 text-yellow-900"
                         : result.status === "active"
-                        ? "bg-[#BBF7D0]"
-                        : "bg-[#E5E7EB]"
+                        ? "bg-green-200 text-green-900"
+                        : "bg-gray-200 text-gray-800"
                     }`}
                   >
-                    {String(result.status || "Unknown")
-                      .charAt(0)
-                      .toUpperCase() +
-                      String(result.status || "Unknown").slice(1)}
+                    {String(result.status || "Unknown")}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-3">
-                  <div className="flex items-start gap-2">
-                    <div className="h-8 w-8 border-[2px] border-black bg-[#E0ECFF] flex items-center justify-center">
-                      <User size={16} className="text-indigo-700" />
+                {/* DETAILS */}
+                <div className="space-y-5 text-lg">
+                  {/* NAME */}
+                  <div className="flex items-start gap-3">
+                    <div className="bg-indigo-100 p-3 rounded-xl">
+                      <User size={22} className="text-indigo-600" />
                     </div>
                     <div>
-                      <p className="text-[11px] text-slate-500">Name</p>
-                      <p className="text-sm font-semibold">
-                        {result.userName || "—"}
-                      </p>
+                      <p className="text-sm text-gray-500">Name</p>
+                      <p className="font-semibold text-xl">{result.userName || "—"}</p>
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-2">
-                    <div className="h-8 w-8 border-[2px] border-black bg-[#E0ECFF] flex items-center justify-center">
-                      <Award size={16} className="text-indigo-700" />
+                  {/* CODE */}
+                  <div className="flex items-start gap-3">
+                    <div className="bg-indigo-100 p-3 rounded-xl">
+                      <Award size={22} className="text-indigo-600" />
                     </div>
                     <div>
-                      <p className="text-[11px] text-slate-500">
-                        Verification code
-                      </p>
-                      <p className="text-sm font-mono font-semibold">
-                        {result.verificationCode || "—"}
-                      </p>
+                      <p className="text-sm text-gray-500">Verification Code</p>
+                      <p className="font-mono font-bold text-xl">{result.verificationCode}</p>
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-2">
-                    <div className="h-8 w-8 border-[2px] border-black bg-[#E0ECFF] flex items-center justify-center">
-                      <Clock size={16} className="text-indigo-700" />
+                  {/* TIME */}
+                  <div className="flex items-start gap-3">
+                    <div className="bg-indigo-100 p-3 rounded-xl">
+                      <Clock size={22} className="text-indigo-600" />
                     </div>
                     <div>
-                      <p className="text-[11px] text-slate-500">Joined queue</p>
-                      <p className="text-sm font-semibold">
+                      <p className="text-sm text-gray-500">Joined Queue</p>
+                      <p className="font-medium">
                         {result.joinedAt
                           ? new Date(result.joinedAt).toLocaleString()
                           : "N/A"}
@@ -574,114 +554,113 @@ function VerifyUser() {
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-2">
+                  {/* STATUS */}
+                  <div className="flex items-start gap-3">
                     <div
-                      className={`h-8 w-8 border-[2px] border-black flex items-center justify-center ${
-                        result.isVerified ? "bg-[#BBF7D0]" : "bg-[#FEF3C7]"
+                      className={`p-3 rounded-xl ${
+                        result.isVerified ? "bg-green-100" : "bg-yellow-100"
                       }`}
                     >
                       {result.isVerified ? (
-                        <CheckCircle size={16} className="text-green-700" />
+                        <CheckCircle size={22} className="text-green-600" />
                       ) : (
-                        <AlertCircle size={16} className="text-yellow-700" />
+                        <AlertCircle size={22} className="text-yellow-600" />
                       )}
                     </div>
                     <div>
-                      <p className="text-[11px] text-slate-500">
-                        Verification status
-                      </p>
+                      <p className="text-sm text-gray-500">Verification Status</p>
                       <p
-                        className={`text-sm font-semibold ${
-                          result.isVerified ? "text-green-700" : "text-yellow-700"
+                        className={`font-bold text-xl ${
+                          result.isVerified ? "text-green-600" : "text-yellow-600"
                         }`}
                       >
-                        {result.isVerified ? "Verified ✓" : "Not verified yet"}
+                        {result.isVerified ? "Verified ✓" : "Not Verified"}
                       </p>
                     </div>
                   </div>
                 </div>
 
+                {/* BUTTON */}
                 {!result.isVerified ? (
                   <button
                     onClick={markVerified}
                     disabled={verifying}
-                    className="mt-3 w-full border-[2px] border-black bg-[#22C55E] py-2 text-sm font-semibold flex items-center justify-center gap-2 hover:-translate-y-[1px] transition-transform disabled:opacity-60"
+                    className="mt-8 w-full bg-green-600 hover:bg-green-700 text-white py-5 rounded-xl text-xl font-semibold shadow-lg transition flex items-center justify-center gap-3 disabled:opacity-50"
                   >
                     {verifying ? (
                       <>
-                        <Loader size={16} className="animate-spin" />
+                        <Loader size={22} className="animate-spin" />
                         Processing...
                       </>
                     ) : (
                       <>
-                        <CheckCircle size={16} />
-                        Mark as verified
+                        <CheckCircle size={24} />
+                        Mark as Verified
                       </>
                     )}
                   </button>
                 ) : (
-                  <div className="mt-3 border-[2px] border-black bg-[#BBF7D0] px-3 py-2 text-sm font-semibold flex items-center justify-center gap-2">
-                    <CheckCircle size={16} />
-                    Already verified
+                  <div className="mt-8 bg-green-100 border border-green-300 rounded-xl p-4 text-green-800 font-semibold text-center text-lg flex items-center justify-center gap-2">
+                    <CheckCircle size={22} />
+                    Customer already verified
                   </div>
                 )}
               </div>
             )}
 
-            {/* history */}
+            {/* HISTORY */}
             {history.length > 0 && (
-              <div className="pt-2 border-t-[2px] border-dashed border-slate-400 mt-2">
-                <div className="flex items-center justify-between mb-1">
-                  <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em]">
-                    Recent checks
+              <div className="mt-10">
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-lg font-semibold text-gray-700">
+                    Recent Verifications
                   </h3>
                   <button
                     onClick={clearHistory}
-                    className="text-[11px] underline underline-offset-2"
+                    className="text-sm text-indigo-600 hover:text-indigo-800"
                   >
-                    Clear
+                    Clear history
                   </button>
                 </div>
-                <div className="border-[2px] border-black bg-white divide-y-[2px] divide-black/20">
+
+                <div className="bg-gray-50 rounded-xl divide-y divide-gray-200 shadow">
                   {history.map((item, index) => (
-                    <button
-                      type="button"
+                    <div
                       key={index}
-                      className="w-full px-3 py-2 flex items-center justify-between text-left hover:bg-[#FFF5D0]"
+                      className="p-4 flex justify-between items-center hover:bg-gray-100 cursor-pointer"
                       onClick={() => loadFromHistory(item.code)}
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-3">
                         <div
-                          className={`h-7 w-7 border-[2px] border-black rounded-full flex items-center justify-center text-[11px] ${
+                          className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold ${
                             item.verified
-                              ? "bg-[#BBF7D0] text-green-800"
-                              : "bg-[#E5E7EB] text-slate-700"
+                              ? "bg-green-200 text-green-800"
+                              : "bg-gray-300 text-gray-700"
                           }`}
                         >
-                          {item.verified ? <Check size={13} /> : item.code?.[0] || "?"}
+                          {item.verified ? <Check size={18} /> : item.code[0]}
                         </div>
-                        <div className="leading-tight">
-                          <p className="text-xs font-semibold truncate">
-                            {item.userName}
-                          </p>
-                          <p className="text-[10px] font-mono text-slate-600">
+                        <div>
+                          <p className="font-medium">{item.userName}</p>
+                          <p className="text-xs text-gray-500 font-mono">
                             {item.code}
                           </p>
                         </div>
                       </div>
-                      <span className="text-[10px] text-slate-600">
+                      <span className="text-xs text-gray-500">
                         {formatTime(item.timestamp)}
                       </span>
-                    </button>
+                    </div>
                   ))}
                 </div>
               </div>
             )}
+
           </div>
         </div>
 
-        <div className="mt-3 text-center text-[11px] text-slate-700">
-          Staff-only screen · QueueBoard verification tool
+        <div className="mt-4 text-center text-gray-600 text-xs">
+          Staff-only screen • QueueBoard verification tool
         </div>
       </div>
     </div>
@@ -689,3 +668,4 @@ function VerifyUser() {
 }
 
 export default VerifyUser;
+
