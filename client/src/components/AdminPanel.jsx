@@ -767,6 +767,7 @@
 // export default AdminPanel;
 // AdminPanel.jsx
 // AdminPanel.jsx
+// AdminPanel.jsx
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
@@ -1042,7 +1043,7 @@ function AdminPanel() {
             <span>Analytics (soon)</span>
           </div>
 
-          <div className="border-[2px] border-black bg-white px-3 py-2 flex items-center gap-2 opacity-80">
+          {/* <div className="border-[2px] border-black bg-white px-3 py-2 flex items-center gap-2 opacity-80">
             <Store size={14} />
             <span>Business profile</span>
           </div>
@@ -1055,7 +1056,7 @@ function AdminPanel() {
           <div className="border-[2px] border-black bg-white px-3 py-2 flex items-center gap-2 opacity-80">
             <Settings size={14} />
             <span>Settings</span>
-          </div>
+          </div> */}
         </div>
 
         {/* Sidebar footer */}
@@ -1101,13 +1102,13 @@ function AdminPanel() {
               )}
               <span>Refresh</span>
             </button>
-            <button
+            {/* <button
               onClick={deletePlace}
               className="flex items-center gap-2 border-[2px] border-black bg-[#FECACA] px-3 py-1.5 text-[12px] font-semibold hover:-translate-y-[1px] transition-transform"
             >
               <Trash2 size={14} />
               <span>Delete place</span>
-            </button>
+            </button> */}
           </div>
         </header>
 
@@ -1357,32 +1358,8 @@ function AdminPanel() {
           </div>
         </main>
 
-        {/* FOOTER */}
-        <footer className="px-5 md:px-7 py-3 border-t-[3px] border-black bg-[#FFF5D0] text-[11px] text-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <div className="h-7 w-7 bg-black text-[#FFF5D9] flex items-center justify-center text-[10px] font-bold uppercase tracking-[0.12em]">
-              Q
-            </div>
-          <div className="leading-tight">
-              <div className="font-semibold">QueueBoard Admin</div>
-              <div>Handle queues, don&apos;t fight them.</div>
-            </div>
-          </div>
-          <div className="flex gap-3 flex-wrap">
-            <button className="underline underline-offset-2 text-left">
-              Help / FAQ
-            </button>
-            <button
-              className="underline underline-offset-2 text-left"
-              onClick={deletePlace}
-            >
-              Delete this place
-            </button>
-            <button className="underline underline-offset-2 text-left">
-              Settings
-            </button>
-          </div>
-        </footer>
+      
+        
       </div>
 
       {/* Add User Modal */}
@@ -1524,4 +1501,3 @@ function AdminPanel() {
 }
 
 export default AdminPanel;
-
