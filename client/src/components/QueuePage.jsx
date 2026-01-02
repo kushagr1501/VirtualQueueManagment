@@ -349,7 +349,7 @@ function QueuePage() {
             </div>
           )}
 
-          {/* Show message if no queues exist */}
+          {/* To Show message if no queues exist */}
           {queueNames.length === 0 && (
             <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-xl p-5">
               <h2 className="text-lg font-semibold text-yellow-800 mb-2">No queues available</h2>
@@ -374,8 +374,6 @@ function QueuePage() {
               </div>
             </div>
           )}
-
-          {/* Cancelled / removed prompt */}
           {cancelledPending && (
             <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-5">
               <h2 className="text-lg font-semibold text-red-800 mb-2">No longer in queue</h2>
