@@ -8,14 +8,12 @@ function Landing() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950 text-gray-900 dark:text-white px-4 flex items-center justify-center overflow-hidden relative">
-      {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 left-10 w-72 h-72 bg-purple-300 dark:bg-purple-900 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl opacity-20 animate-pulse" />
         <div className="absolute bottom-20 right-10 w-96 h-96 bg-indigo-300 dark:bg-indigo-900 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl opacity-20 animate-pulse delay-700" />
       </div>
 
       <div className="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 items-center gap-12 lg:gap-20 py-16 lg:py-24 relative z-10">
-        {/* Left: Hero Content */}
         <div className="space-y-8">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-100 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800 rounded-full">
             <span className="relative flex h-2 w-2">
@@ -114,7 +112,6 @@ function Landing() {
               ))}
             </div>
 
-            {/* Trust badges */}
             <div className="mt-8 pt-6 border-t border-gray-200 dark:border-slate-700 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
               <div className="flex items-center gap-2">
                 <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
@@ -130,15 +127,12 @@ function Landing() {
               </div>
             </div>
           </div>
-
-          {/* Business options modal */}
           {showBusinessOptions && (
             <div
               className="fixed inset-0 z-50 flex items-center justify-center px-4 animate-in fade-in duration-200"
               aria-modal="true"
               role="dialog"
             >
-              {/* Enhanced backdrop with blur */}
               <div
                 className="absolute inset-0 bg-black/60 backdrop-blur-sm"
                 onClick={() => setShowBusinessOptions(false)}
@@ -217,6 +211,7 @@ function Landing() {
 }
 
 export default Landing;
+
 
 
 
