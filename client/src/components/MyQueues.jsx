@@ -29,7 +29,6 @@ function MyQueues() {
             We're working hard to bring you the best queue management experience. Stay tuned for updates!
           </p>
           
-          {/* Feature Preview */}
           <div className="bg-gray-50 rounded-xl p-6 mb-6">
             <h3 className="font-semibold text-gray-800 mb-4">Features to look forward to:</h3>
             
@@ -66,7 +65,6 @@ function MyQueues() {
             </div>
           </div>
           
-          {/* Email Notification */}
           <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-4 text-center">
             <p className="text-sm text-indigo-800">
               Want to be notified when this feature launches? Stay tuned for updates!
@@ -75,10 +73,10 @@ function MyQueues() {
         </div>
       </div>
       
-      {/* Footer */}
       <p className="text-sm text-gray-500 mt-8">© 2025 Queue App. All rights reserved.</p>
     </div>
   );
 }
+
 
 export default MyQueues;
