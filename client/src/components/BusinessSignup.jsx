@@ -46,7 +46,6 @@ function BusinessSignup() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950 flex items-center justify-center px-4 py-8">
-      {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 left-10 w-72 h-72 bg-purple-300 dark:bg-purple-900 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl opacity-20 animate-pulse" />
         <div className="absolute bottom-20 right-10 w-96 h-96 bg-indigo-300 dark:bg-indigo-900 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl opacity-20 animate-pulse" />
@@ -56,9 +55,7 @@ function BusinessSignup() {
         <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200/50 dark:border-slate-700/50 overflow-hidden">
           <div className="grid grid-cols-1 lg:grid-cols-2">
             
-            {/* Left: Brand Panel */}
             <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 text-white p-10 lg:p-14 flex flex-col justify-center relative overflow-hidden">
-              {/* Decorative elements */}
               <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
               <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full blur-3xl" />
               
@@ -103,7 +100,6 @@ function BusinessSignup() {
               </div>
             </div>
 
-            {/* Right: Form Panel */}
             <div className="p-10 lg:p-14 flex flex-col justify-center">
               <div className="mb-8">
                 <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
@@ -210,7 +206,6 @@ function BusinessSignup() {
           </div>
         </div>
 
-        {/* Trust badges */}
         <div className="mt-8 flex items-center justify-center gap-8 text-xs text-gray-500 dark:text-gray-400">
           <div className="flex items-center gap-2">
             <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
@@ -231,3 +226,4 @@ function BusinessSignup() {
 }
 
 export default BusinessSignup;
+
