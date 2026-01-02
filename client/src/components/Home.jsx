@@ -436,7 +436,6 @@ function Home() {
 
   return (
     <div className="min-h-screen bg-[#FAF0D7]">
-      {/* HEADER */}
       <header className="border-b-[4px] border-black bg-[#FAF0D7] px-6 py-4">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <Link to="/" className="flex items-center gap-3">
@@ -661,3 +660,4 @@ function Home() {
 }
 
 export default Home;
+
