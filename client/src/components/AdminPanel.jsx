@@ -833,7 +833,7 @@ function AdminPanel() {
     return () => {
       socket.off("queueUpdate", fetchData);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [id, selectedQueue]);
 
   const fetchData = async () => {
@@ -1006,7 +1006,6 @@ function AdminPanel() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-100 via-amber-100 to-emerald-100 flex">
-      {/* FULL-HEIGHT SIDEBAR */}
       <aside className="w-60 md:w-72 border-r-[3px] border-black bg-[#FFE7B3] flex flex-col">
         {/* Brand */}
         <div className="px-4 py-4 border-b-[3px] border-black flex items-center gap-3 bg-[#FFD966]">
@@ -1023,7 +1022,6 @@ function AdminPanel() {
           </div>
         </div>
 
-        {/* Nav */}
         <div className="flex-1 px-3 py-3 space-y-2 overflow-y-auto text-[13px]">
           <div className="border-[2px] border-black bg-white px-3 py-2 flex items-center gap-2">
             <Users size={14} />
@@ -1059,7 +1057,6 @@ function AdminPanel() {
           </div> */}
         </div>
 
-        {/* Sidebar footer */}
         <div className="px-3 py-3 border-t-[3px] border-black bg-[#FFF5D0] text-[11px] space-y-2">
           <div className="flex items-center gap-2 border-[2px] border-black bg-white px-2 py-1">
             <Clock size={12} />
@@ -1077,9 +1074,7 @@ function AdminPanel() {
         </div>
       </aside>
 
-      {/* MAIN PANEL */}
       <div className="flex-1 flex flex-col bg-[#FFF8E5] border-l-[3px] border-black">
-        {/* Top bar inside main */}
         <header className="px-5 md:px-7 py-4 border-b-[3px] border-black flex flex-col md:flex-row gap-3 md:items-center md:justify-between bg-[#FFF5D0]">
           <div>
             <h1 className="text-2xl md:text-3xl font-black leading-snug">
@@ -1112,9 +1107,7 @@ function AdminPanel() {
           </div>
         </header>
 
-        {/* Scrollable content */}
         <main className="flex-1 overflow-y-auto px-5 md:px-7 py-5 space-y-6">
-          {/* Summary row */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="border-[2px] border-black bg-white px-4 py-3 flex items-center gap-3">
               <div className="h-9 w-9 flex items-center justify-center border-[2px] border-black bg-[#FFF8E5]">
@@ -1204,9 +1197,7 @@ function AdminPanel() {
             </div>
           </div>
 
-          {/* Queue table/card */}
           <div className="border-[2px] border-black bg-white flex flex-col min-h-[240px]">
-            {/* header inside card */}
             <div className="px-4 py-3 border-b-[2px] border-black flex flex-col md:flex-row gap-3 md:items-center md:justify-between bg-[#FFF5D0]">
               <div>
                 <h2 className="text-lg font-black">
@@ -1234,7 +1225,6 @@ function AdminPanel() {
               </div>
             </div>
 
-            {/* content */}
             {loading ? (
               <div className="flex-1 flex flex-col items-center justify-center gap-3 py-8">
                 <div className="w-10 h-10 border-[3px] border-black border-t-transparent rounded-full animate-spin" />
@@ -1362,7 +1352,6 @@ function AdminPanel() {
         
       </div>
 
-      {/* Add User Modal */}
       {addUserModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div
@@ -1428,7 +1417,6 @@ function AdminPanel() {
         </div>
       )}
 
-      {/* Create Queue Modal */}
       {createQueueModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div
@@ -1501,3 +1489,4 @@ function AdminPanel() {
 }
 
 export default AdminPanel;
+
