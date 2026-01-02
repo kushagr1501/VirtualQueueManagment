@@ -442,7 +442,6 @@ function VerifyUser() {
           </div>
         </div>
 
-        {/* success toast */}
         {success && (
           <div className="mb-4">
             <div className="border-[3px] border-black bg-[#BBF7D0] text-slate-900 px-4 py-3 flex items-center gap-2 shadow-[4px_4px_0_0_rgba(0,0,0,0.4)]">
@@ -454,9 +453,7 @@ function VerifyUser() {
           </div>
         )}
 
-        {/* main card */}
         <div className="bg-[#FFF8E5] border-[3px] border-black shadow-[6px_6px_0_0_rgba(0,0,0,0.4)]">
-          {/* header */}
           <div className="px-4 py-3 border-b-[3px] border-black bg-[#FFD966] flex items-center justify-between">
             <div>
               <h2 className="text-lg font-black tracking-tight">
@@ -468,9 +465,7 @@ function VerifyUser() {
             </div>
           </div>
 
-          {/* body */}
           <div className="p-4 space-y-4">
-            {/* search input */}
             <div className="space-y-2">
               <label className="text-[11px] font-semibold uppercase tracking-[0.12em]">
                 Verification code
@@ -508,7 +503,6 @@ function VerifyUser() {
               )}
             </div>
 
-            {/* result */}
             {result && (
               <div className="mt-2 border-[2px] border-black bg-white p-3 space-y-3">
                 <div className="flex items-start justify-between">
@@ -627,7 +621,6 @@ function VerifyUser() {
               </div>
             )}
 
-            {/* history */}
             {history.length > 0 && (
               <div className="pt-2 border-t-[2px] border-dashed border-slate-400 mt-2">
                 <div className="flex items-center justify-between mb-1">
@@ -688,4 +681,5 @@ function VerifyUser() {
 }
 
 export default VerifyUser;
+
 
