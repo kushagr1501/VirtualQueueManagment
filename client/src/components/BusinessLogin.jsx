@@ -259,10 +259,8 @@ function BusinessLogin() {
     <div className="min-h-screen bg-gradient-to-br from-orange-100 via-amber-100 to-emerald-100 flex items-center justify-center px-4 py-6">
       <div className="w-full max-w-5xl bg-[#FFF8E5] border-[3px] border-black shadow-[6px_6px_0_0_rgba(0,0,0,0.4)]">
         <div className="grid grid-cols-1 lg:grid-cols-2">
-          {/* LEFT: Brand / context (same vibe as landing) */}
           <div className="border-b-[3px] lg:border-b-0 lg:border-r-[3px] border-black bg-[#FFE7B3] p-6 md:p-8 flex flex-col justify-between gap-6">
             <div className="space-y-4">
-              {/* mini brand */}
               <div className="flex items-center gap-3">
                 <div className="h-8 w-8 bg-black text-[#FFF5D9] flex items-center justify-center text-[11px] font-bold uppercase tracking-[0.15em]">
                   Q
@@ -285,8 +283,6 @@ function BusinessLogin() {
 
              
             </div>
-
-            {/* features list */}
             <div className="space-y-3 text-sm">
               <div className="flex items-start gap-3 border-[2px] border-black bg-[#FFF8E5] px-3 py-2">
                 <div className="h-8 w-8 flex items-center justify-center border border-black bg-white">
@@ -319,13 +315,11 @@ function BusinessLogin() {
               </div>
             </div>
 
-            {/* tiny footer */}
             <div className="pt-3 border-t border-black/30 text-[11px] text-slate-900 flex items-center justify-between gap-2 flex-wrap">
               
             </div>
           </div>
 
-          {/* RIGHT: Login form in same style */}
           <div className="p-6 md:p-8 flex flex-col justify-between">
             <div className="space-y-6">
               <div>
@@ -339,7 +333,6 @@ function BusinessLogin() {
               </div>
 
               <div className="space-y-4">
-                {/* Email */}
                 <div className="space-y-1">
                   <label
                     htmlFor="email"
@@ -360,7 +353,6 @@ function BusinessLogin() {
                   </div>
                 </div>
 
-                {/* Password */}
                 <div className="space-y-1">
                   <label
                     htmlFor="password"
@@ -381,7 +373,6 @@ function BusinessLogin() {
                   </div>
                 </div>
 
-                {/* Remember + forgot */}
                 <div className="flex items-center justify-between text-[12px] mt-1">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -411,7 +402,6 @@ function BusinessLogin() {
                   )}
                 </button>
 
-                {/* Signup link */}
                 <p className="text-[12px] text-slate-700 text-center mt-2">
                   New here?{" "}
                   <button
@@ -436,5 +426,6 @@ function BusinessLogin() {
 }
 
 export default BusinessLogin;
+
 
 
