@@ -1,460 +1,579 @@
-// QueuePage.jsx
-import React, { useEffect, useState, useRef } from "react";
-import { useParams } from "react-router-dom";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import axios from "axios";
-import io from "socket.io-client";
-import toast, { Toaster } from "react-hot-toast";
-import {
-  Clock, User, Users, Check, ChevronRight,
-  Loader, X, RefreshCw, Trophy
-} from "lucide-react";
+import { useParams, Link } from "react-router-dom";
+import { MapPin, Scissors, QrCode, User, AlertCircle, CheckCircle, PartyPopper, Home, RotateCcw, AlertTriangle } from "lucide-react";
+import { useSocket } from "../utils/socket";
+import gsap from "gsap";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
+/**
+ * QueuePage Component
+ * 
+ * Handles user queue joining, position tracking, and notifications
+ * when served or removed by business admin.
+ */
 function QueuePage() {
   const { id } = useParams();
-  const [queue, setQueue] = useState([]);
-  const [name, setName] = useState("");
-  const [queueNames, setQueueNames] = useState([]);
+  const { joinPlace, leavePlace, onQueueUpdate } = useSocket();
+  
+  // State management
+  const [place, setPlace] = useState(null);
+  const [queues, setQueues] = useState([]);
   const [selectedQueue, setSelectedQueue] = useState("");
-  const [estimatedWaitTime, setEstimatedWaitTime] = useState(null);
+  const [queueData, setQueueData] = useState([]);
+  const [userName, setUserName] = useState("");
+  const [joined, setJoined] = useState(false);
+  const [myTicket, setMyTicket] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [placeName, setPlaceName] = useState("Loading...");
+  const [alreadyJoined, setAlreadyJoined] = useState(false);
   const [error, setError] = useState(null);
+  const [isServed, setIsServed] = useState(false);
+  const [isRemoved, setIsRemoved] = useState(false);
+  const [hasAcknowledged, setHasAcknowledged] = useState(false);
 
-  const [userInfo, setUserInfo] = useState(
-    JSON.parse(localStorage.getItem(`queueUser_${id}`)) || null
-  );
+  // Refs for GSAP animations
+  const ticketContainerRef = useRef(null);
+  const leftPartRef = useRef(null);
+  const rightStubRef = useRef(null);
+  const codeContentRef = useRef(null);
+  const buttonContentRef = useRef(null);
+  const leaderboardRef = useRef(null);
 
-  const [servedPending, setServedPending] = useState(false);
-  const [servedEntry, setServedEntry] = useState(null);
-  const [cancelledPending, setCancelledPending] = useState(false);
-  const [ackLoading, setAckLoading] = useState(false);
-
-  const socketRef = useRef(null);
-
+  /**
+   * Verify existing ticket on page load
+   * Checks if user already has a ticket and if they're still in the queue
+   */
   useEffect(() => {
-    socketRef.current = io(API, { withCredentials: true });
-
-    socketRef.current.on("connect", () => {
-      if (id) socketRef.current.emit("joinPlaceRoom", id);
-    });
-
-    socketRef.current.on("queueUpdate", () => {
-      fetchQueue();
-      fetchQueueNames(); // Refresh queue names when any update happens
-    });
-
-    fetchPlaceName();
-    fetchQueueNames();
-
-    const interval = setInterval(() => {
-      if (userInfo) calculateWaitTime();
-    }, 60_000);
-
-    return () => {
-      clearInterval(interval);
-      if (socketRef.current) {
-        socketRef.current.off("queueUpdate");
-        socketRef.current.disconnect();
-        socketRef.current = null;
+    const verifyAndLoad = async () => {
+      const storedQueues = JSON.parse(localStorage.getItem("myQueues") || "[]");
+      const existingEntry = storedQueues.find(q => 
+        q.placeId === id && q.queueName === (selectedQueue || "default")
+      );
+      
+      if (existingEntry) {
+        try {
+          const res = await axios.get(`${API}/api/place/${id}`, { params: { queueName: selectedQueue } });
+          const queueData = res.data;
+          const userStillInQueue = queueData.find(u => u._id === existingEntry.ticketId);
+          
+          if (userStillInQueue) {
+            setAlreadyJoined(true);
+            setMyTicket({ _id: existingEntry.ticketId, verificationCode: existingEntry.verifyCode });
+            setUserName(existingEntry.userName || "");
+            setJoined(true);
+          } else {
+            // User was served/removed - clear from localStorage
+            const updatedQueues = storedQueues.filter(q => q.ticketId !== existingEntry.ticketId);
+            localStorage.setItem("myQueues", JSON.stringify(updatedQueues));
+            resetTicketState();
+          }
+        } catch (err) {
+          const updatedQueues = storedQueues.filter(q => q.ticketId !== existingEntry.ticketId);
+          localStorage.setItem("myQueues", JSON.stringify(updatedQueues));
+          resetTicketState();
+        }
+      } else {
+        resetTicketState();
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
-
-  useEffect(() => {
-    fetchQueue();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedQueue, userInfo]);
-
-  const fetchPlaceName = async () => {
-    try {
-      const res = await axios.get(`${API}/api/places/${id}`);
-      setPlaceName(res.data?.name || "Unknown Place");
-    } catch (err) {
-      console.error("Failed to fetch place:", err);
-    }
-  };
-
-  const fetchQueueNames = async () => {
-    try {
-      const res = await axios.get(`${API}/api/places/${id}/queues`);
-      const availableQueues = res.data || [];
-      setQueueNames(availableQueues);
-      
-      // Check if current selected queue still exists
-      if (selectedQueue && !availableQueues.includes(selectedQueue)) {
-        // Selected queue was deleted
-        toast.error(`Queue "${selectedQueue}" has been deleted by the business.`);
-        
-        // Clear user info if they were in the deleted queue
-        if (userInfo) {
-          localStorage.removeItem(`queueUser_${id}`);
-          setUserInfo(null);
-          setServedPending(false);
-          setServedEntry(null);
-          setCancelledPending(false);
-        }
-        
-        // Switch to first available queue or clear selection
-        if (availableQueues.length > 0) {
-          setSelectedQueue(availableQueues[0]);
-        } else {
-          setSelectedQueue("");
-          setQueue([]);
-        }
-      } else if (!selectedQueue && availableQueues.length > 0) {
-        // No queue selected but queues available - select first one
-        setSelectedQueue(availableQueues[0]);
-      } else if (availableQueues.length === 0) {
-        // No queues available
-        setSelectedQueue("");
-        setQueue([]);
-      }
-    } catch (err) {
-      console.error("Failed to fetch queue names", err);
-    }
-  };
-
-  const fetchUserEntryByCode = async (code) => {
-    try {
-      const res = await axios.get(`${API}/api/queue/find-by-code/${code}`);
-      return res.data;
-    } catch (err) {
-      return null;
-    }
-  };
-
-  const fetchQueue = async () => {
-    if (!selectedQueue) {
-      setQueue([]);
-      setLoading(false);
-      setRefreshing(false);
-      return;
-    }
     
-    setRefreshing(true);
-    try {
-      const res = await axios.get(`${API}/api/place/${id}`, {
-        params: { queueName: selectedQueue },
-      });
-      const q = res.data || [];
-      setQueue(q);
+    const resetTicketState = () => {
+      setAlreadyJoined(false);
+      setMyTicket(null);
+      setUserName("");
+      setJoined(false);
+      setIsServed(false);
+      setIsRemoved(false);
+      setHasAcknowledged(false);
+    };
+    
+    if (id && selectedQueue) {
+      verifyAndLoad();
+    }
+  }, [id, selectedQueue]);
 
-      if (userInfo && userInfo._id) {
-        const present = q.some((p) => p._id === userInfo._id);
-        if (present) {
-          setServedPending(false);
-          setServedEntry(null);
-          setCancelledPending(false);
-          calculateWaitTime(q);
-        } else {
-          const entry = await fetchUserEntryByCode(userInfo.code);
-          if (!entry) {
-            setServedPending(false);
-            setServedEntry(null);
-            setCancelledPending(true);
-            toast("You are no longer in the queue. Press Leave to continue.");
-          } else if (entry.status === "served") {
-            setServedPending(true);
-            setServedEntry(entry);
-            setCancelledPending(false);
-            
-            // Show appropriate message based on why they were served
-            if (entry.queueName !== selectedQueue) {
-              toast("Your queue was deleted by the business.");
-            }
-          } else if (entry.status === "cancelled") {
-            setCancelledPending(true);
-            setServedPending(false);
-            setServedEntry(entry);
-          } else {
-            setServedPending(false);
-            setCancelledPending(false);
-            setServedEntry(null);
-            if (entry.queueName && entry.queueName !== selectedQueue) {
-              toast("Your entry belongs to another queue; clearing local saved entry.");
-              localStorage.removeItem(`queueUser_${id}`);
-              setUserInfo(null);
+  /**
+   * Load place data and available queues
+   */
+  useEffect(() => {
+    joinPlace(id);
+
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const [pRes, qNamesRes] = await Promise.all([
+          axios.get(`${API}/api/places/${id}`),
+          axios.get(`${API}/api/places/${id}/queues`),
+        ]);
+        setPlace(pRes.data);
+        setQueues(qNamesRes.data || []);
+        if (qNamesRes.data?.length > 0 && !selectedQueue) {
+          setSelectedQueue(qNamesRes.data[0]);
+        }
+      } catch (err) {
+        setError("Failed to load queue data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+
+    return () => {
+      leavePlace(id);
+    };
+  }, [id, joinPlace, leavePlace, selectedQueue]);
+
+  /**
+   * Monitor queue updates via Socket.IO
+   * Detects when user is served or removed from queue
+   */
+  useEffect(() => {
+    if (!selectedQueue) return;
+    
+    const fetchQueue = async () => {
+      try {
+        const res = await axios.get(`${API}/api/place/${id}`, { params: { queueName: selectedQueue } });
+        setQueueData(res.data);
+        
+        // Check if current user is no longer in queue
+        if (myTicket && myTicket._id && !hasAcknowledged && !isServed && !isRemoved) {
+          const userEntry = res.data.find(u => u._id === myTicket._id);
+          if (!userEntry) {
+            // User removed from queue - check status to determine if served or cancelled
+            try {
+              const statusRes = await axios.get(`${API}/api/queue/status/${myTicket._id}`);
+              if (statusRes.data.status === "served") {
+                setIsServed(true);
+              } else if (statusRes.data.status === "cancelled") {
+                setIsRemoved(true);
+              }
+            } catch (err) {
+              setIsServed(true);
             }
           }
         }
-      } else {
-        setEstimatedWaitTime(null);
-        setServedPending(false);
-        setServedEntry(null);
-        setCancelledPending(false);
+      } catch (err) {
+        // Silent fail on fetch error
       }
-    } catch (err) {
-      console.error("Queue fetch failed:", err);
-      setError("Failed to load queue data");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+    };
+    
+    fetchQueue();
+    const unsubscribe = onQueueUpdate(fetchQueue);
+    
+    return () => unsubscribe();
+  }, [id, selectedQueue, onQueueUpdate, myTicket, hasAcknowledged]);
 
-  const calculateWaitTime = (currentQueue = queue) => {
-    if (!currentQueue.length || !userInfo) return;
-    const position = currentQueue.findIndex((person) => person._id === userInfo._id);
-    if (position === -1) {
-      setEstimatedWaitTime(null);
+  // GSAP entrance animation for ticket
+  useEffect(() => {
+    if (ticketContainerRef.current && !loading && !alreadyJoined) {
+      gsap.fromTo(ticketContainerRef.current,
+        { y: 100, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.8, ease: "power3.out" }
+      );
+    }
+  }, [loading, alreadyJoined]);
+
+  /**
+   * Handle user joining the queue
+   */
+  const handleJoin = async (e) => {
+    e.preventDefault();
+    if (!userName.trim()) return;
+    
+    if (alreadyJoined) {
+      setError("You have already joined this queue!");
       return;
     }
-    setEstimatedWaitTime(position * 5);
-  };
 
-  const joinQueue = async () => {
-    if (!name.trim() || !selectedQueue) return;
-    setLoading(true);
     try {
       const res = await axios.post(`${API}/api/place/${id}/join`, {
-        userName: name,
+        userName,
         queueName: selectedQueue,
       });
-      const info = { _id: res.data._id, code: res.data.verificationCode };
-      setUserInfo(info);
-      localStorage.setItem(`queueUser_${id}`, JSON.stringify(info));
-      setName("");
-      toast.success("🎉 You've joined the queue!");
-      if (socketRef.current && socketRef.current.connected) socketRef.current.emit("joinPlaceRoom", id);
-      fetchQueue();
+
+      const ticketData = res.data;
+      setMyTicket(ticketData);
+
+      const history = JSON.parse(localStorage.getItem("myQueues") || "[]");
+      history.push({
+        placeId: id,
+        placeName: place.name,
+        ticketId: ticketData._id,
+        queueName: selectedQueue,
+        userName,
+        verifyCode: ticketData.verificationCode,
+        start: new Date()
+      });
+      localStorage.setItem("myQueues", JSON.stringify(history));
+
+      setJoined(true);
+      setAlreadyJoined(true);
+
+      // Ticket tear animation
+      const tl = gsap.timeline();
+      tl.to(rightStubRef.current, { rotate: 2, duration: 0.1, repeat: 5, yoyo: true })
+        .to(rightStubRef.current, { x: 40, rotation: 5, duration: 0.3, ease: "power2.in" })
+        .to(rightStubRef.current, { x: 60, rotation: 0, scale: 1.05, duration: 0.5, ease: "back.out(1.2)" })
+        .to(buttonContentRef.current, { opacity: 0, duration: 0.1 }, "-=0.4")
+        .to(codeContentRef.current, { opacity: 1, scale: 1, duration: 0.4 }, "-=0.2")
+        .fromTo(leaderboardRef.current, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5 }, "-=0.2");
+
     } catch (err) {
-      console.error("Join failed:", err);
-      setError("Failed to join queue. Please try again.");
-      toast.error("❌ Failed to join the queue.");
-    } finally {
-      setLoading(false);
+      if (err.response?.status === 409) {
+        setError("You have already joined this queue!");
+        setAlreadyJoined(true);
+      } else {
+        setError(err.response?.data?.message || "Failed to join queue");
+      }
     }
   };
 
-  const leaveQueue = async () => {
-    if (!userInfo?._id) {
-      localStorage.removeItem(`queueUser_${id}`);
-      setUserInfo(null);
-      setServedPending(false);
-      setServedEntry(null);
-      setCancelledPending(false);
-      fetchQueue();
-      return;
-    }
-    setLoading(true);
+  /**
+   * Get current position in queue
+   */
+  const getMyPosition = () => {
+    if (!myTicket) return "?";
+    const idx = queueData.findIndex(u => u._id === myTicket._id);
+    return idx !== -1 ? idx + 1 : "...";
+  };
+
+  /**
+   * Handle acknowledgment when served or removed
+   * Clears ticket from localStorage and resets state
+   */
+  const handleAcknowledgeServed = async () => {
     try {
-      await axios.post(`${API}/api/leave/${userInfo._id}`);
-      localStorage.removeItem(`queueUser_${id}`);
-      setUserInfo(null);
-      setServedPending(false);
-      setServedEntry(null);
-      setCancelledPending(false);
-      toast("👋 You've left the queue.");
-      fetchQueue();
+      if (myTicket && myTicket._id) {
+        await axios.post(`${API}/api/queue/${myTicket._id}/acknowledge`);
+      }
     } catch (err) {
-      console.error("Leave failed:", err);
-      localStorage.removeItem(`queueUser_${id}`);
-      setUserInfo(null);
-      setServedPending(false);
-      setServedEntry(null);
-      setCancelledPending(false);
-      toast.error("Failed to call server to leave; local record cleared.");
-      fetchQueue();
+      // Silent fail - still reset state
     } finally {
-      setLoading(false);
+      setHasAcknowledged(true);
+      setIsServed(false);
+      setIsRemoved(false);
+      
+      const storedQueues = JSON.parse(localStorage.getItem("myQueues") || "[]");
+      const updatedQueues = storedQueues.filter(q => q.ticketId !== myTicket?._id);
+      localStorage.setItem("myQueues", JSON.stringify(updatedQueues));
+      
+      setJoined(false);
+      setAlreadyJoined(false);
+      setMyTicket(null);
+      setUserName("");
     }
   };
 
-  const leaveAfterQueueDeleted = () => {
-    localStorage.removeItem(`queueUser_${id}`);
-    setUserInfo(null);
-    setServedPending(false);
-    setServedEntry(null);
-    setCancelledPending(false);
-    toast("We're sorry — the queue was closed. Local record cleared.");
-    fetchQueue();
-  };
-
-  const confirmServedAndLeave = async () => {
-    if (!userInfo?._id) {
-      localStorage.removeItem(`queueUser_${id}`);
-      setUserInfo(null);
-      setServedPending(false);
-      setServedEntry(null);
-      fetchQueue();
-      return;
+  /**
+   * Reset ticket state manually (for rejoining)
+   */
+  const resetTicket = () => {
+    if (myTicket && myTicket._id) {
+      const storedQueues = JSON.parse(localStorage.getItem("myQueues") || "[]");
+      const updatedQueues = storedQueues.filter(q => q.ticketId !== myTicket._id);
+      localStorage.setItem("myQueues", JSON.stringify(updatedQueues));
     }
-    setAckLoading(true);
-    try {
-      await axios.post(`${API}/api/queue/${userInfo._id}/acknowledge`);
-      localStorage.removeItem(`queueUser_${id}`);
-      setUserInfo(null);
-      setServedPending(false);
-      setServedEntry(null);
-      toast.success("Acknowledged and cleared.");
-      fetchQueue();
-    } catch (err) {
-      console.error("Acknowledge failed:", err);
-      toast.error("Failed to acknowledge. Please try again.");
-    } finally {
-      setAckLoading(false);
-    }
+    
+    setJoined(false);
+    setAlreadyJoined(false);
+    setMyTicket(null);
+    setUserName("");
+    setIsServed(false);
+    setIsRemoved(false);
+    setHasAcknowledged(false);
   };
 
-  const acknowledgeCancelled = () => {
-    localStorage.removeItem(`queueUser_${id}`);
-    setUserInfo(null);
-    setCancelledPending(false);
-    setServedEntry(null);
-    toast("Your local queue record was cleared.");
-    fetchQueue();
-  };
-
-  const getUserPosition = () => {
-    if (!userInfo || !queue.length) return null;
-    const idx = queue.findIndex((person) => person._id === userInfo._id);
-    return idx === -1 ? null : idx + 1;
-  };
-
-  const userPosition = getUserPosition();
-
-  const getPositionIcon = (position) => {
-    switch (position) {
-      case 1:
-        return <Trophy size={16} className="text-yellow-500" />;
-      case 2:
-        return <Trophy size={16} className="text-gray-400" />;
-      case 3:
-        return <Trophy size={16} className="text-amber-600" />;
-      default:
-        return <span className="w-4 inline-block text-center">{position}</span>;
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col items-center py-12 px-4">
-      <Toaster position="top-center" />
-      <div className="w-full max-w-xl bg-white rounded-2xl shadow-xl overflow-hidden">
-        <div className="bg-indigo-600 text-white p-6 flex justify-between items-center">
-          <h1 className="text-2xl font-bold">{placeName}</h1>
-          <button onClick={() => { fetchQueue(); fetchQueueNames(); }} disabled={refreshing} className="p-2">
-            <RefreshCw size={20} className={refreshing ? "animate-spin" : ""} />
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[#F2F2F2] flex flex-col items-center justify-center font-sans px-4">
+        <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full text-center">
+          <AlertCircle className="w-12 h-12 text-orange-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Error</h2>
+          <p className="text-gray-500 mb-6">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="bg-black text-white px-6 py-3 rounded-xl font-bold hover:bg-orange-500 transition-colors"
+          >
+            Try Again
           </button>
         </div>
+      </div>
+    );
+  }
 
-        <div className="p-6">
-          {error && (
-            <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg flex justify-between items-center">
-              <span>{error}</span>
-              <button onClick={() => setError(null)} className="text-red-700"><X size={16} /></button>
+  if (!place) return <div className="min-h-screen bg-[#F2F2F2] flex items-center justify-center font-mono text-xs">LOADING...</div>;
+
+  return (
+    <div className="min-h-screen bg-[#F2F2F2] text-black font-sans flex flex-col items-center py-12 px-4 overflow-x-hidden relative">
+
+      <div className="absolute inset-0 bg-[#F2F2F2] pointer-events-none">
+        <div className="absolute inset-0 opacity-[0.02] bg-[linear-gradient(90deg,#000_1px,transparent_1px),linear-gradient(0deg,#000_1px,transparent_1px)] bg-[size:40px_40px]"></div>
+      </div>
+
+      <div className="relative z-10 w-full max-w-4xl">
+
+        <div className="text-center mb-10">
+          <h1 className="text-4xl font-black tracking-tighter mb-2 uppercase">{place.name}</h1>
+          <div className="inline-flex items-center gap-2 bg-white border border-gray-200 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest text-gray-500 shadow-sm">
+            <MapPin className="w-3 h-3" /> {place.location}
+          </div>
+        </div>
+
+        {alreadyJoined && !joined && !isServed && !isRemoved && (
+          <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-8 text-center">
+            <p className="text-orange-700 font-medium">You have already joined this queue!</p>
+            <button 
+              onClick={() => setJoined(true)} 
+              className="mt-2 text-orange-600 font-bold underline"
+            >
+              View Your Ticket
+            </button>
+          </div>
+        )}
+
+        {/* Removed by admin notification */}
+        {isRemoved && (
+          <div className="bg-red-50 border-2 border-red-200 rounded-3xl p-8 mb-8 text-center shadow-lg">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle className="w-8 h-8 text-red-600" />
             </div>
-          )}
-
-          {/* Show message if no queues exist */}
-          {queueNames.length === 0 && (
-            <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-xl p-5">
-              <h2 className="text-lg font-semibold text-yellow-800 mb-2">No queues available</h2>
-              <p className="text-sm text-yellow-700">This place doesn't have any active queues at the moment. Please check back later.</p>
-            </div>
-          )}
-
-          {/* Served flow when queue was deleted */}
-          {servedPending && servedEntry && (
-            <div className="mb-6 bg-yellow-50 border border-yellow-300 rounded-xl p-5">
-              <h2 className="text-lg font-semibold text-yellow-800 mb-2">Queue Update</h2>
-              <p className="text-sm text-yellow-700 mb-3">
-                {servedEntry.queueName !== selectedQueue 
-                  ? "Your queue was closed by the business. Please confirm to clear your record."
-                  : "Staff has marked your entry as served. Confirm to clear your local record."}
-              </p>
-              <div className="flex gap-3">
-                <button onClick={confirmServedAndLeave} disabled={ackLoading} className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg">
-                  {ackLoading ? <Loader size={16} className="animate-spin" /> : "Confirm & Leave"}
-                </button>
-                <button onClick={() => { setServedPending(false); toast("Keeping your record for now."); }} className="bg-white border border-yellow-300 text-yellow-700 px-4 py-2 rounded-lg">Keep record</button>
+            <h2 className="text-3xl font-black mb-2 text-red-600">REMOVED FROM QUEUE</h2>
+            <p className="text-gray-600 mb-6">You have been removed from the queue by the business. Please contact them for assistance.</p>
+            
+            <div className="bg-white rounded-2xl p-6 mb-6 inline-block">
+              <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Verification Code</div>
+              <div className="text-4xl font-mono font-bold text-black tracking-widest">
+                {myTicket?.verificationCode || "---"}
               </div>
             </div>
-          )}
 
-          {/* Cancelled / removed prompt */}
-          {cancelledPending && (
-            <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-5">
-              <h2 className="text-lg font-semibold text-red-800 mb-2">No longer in queue</h2>
-              <p className="text-sm text-red-700 mb-3">Your entry appears to have been removed from the queue. Press Acknowledge to remove your local join info.</p>
-              <div className="flex gap-3">
-                <button onClick={acknowledgeCancelled} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg">Acknowledge & Clear</button>
-                <button onClick={() => { setCancelledPending(false); toast("Okay — your local record remains."); }} className="bg-white border border-red-200 text-red-700 px-4 py-2 rounded-lg">Keep local record</button>
+            <Link 
+              to="/home"
+              onClick={handleAcknowledgeServed}
+              className="bg-red-500 text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-red-600 transition-colors inline-flex items-center gap-2"
+            >
+              <Home className="w-5 h-5" />
+              Go Home
+            </Link>
+          </div>
+        )}
+
+        {/* Served notification */}
+        {(isServed || hasAcknowledged) && (
+          <div className="bg-emerald-50 border-2 border-emerald-200 rounded-3xl p-8 mb-8 text-center shadow-lg">
+            <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <PartyPopper className="w-8 h-8 text-emerald-600" />
+            </div>
+            <h2 className="text-3xl font-black mb-2 text-emerald-600">YOU HAVE BEEN SERVED!</h2>
+            <p className="text-gray-600 mb-6">Thank you for waiting. Please proceed to the counter.</p>
+            
+            <div className="bg-white rounded-2xl p-6 mb-6 inline-block">
+              <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Verification Code</div>
+              <div className="text-4xl font-mono font-bold text-black tracking-widest">
+                {myTicket?.verificationCode || "---"}
               </div>
             </div>
-          )}
 
-          {!userInfo && queueNames.length > 0 ? (
-            <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 mb-6">
-              <h2 className="text-lg font-semibold mb-3">Join the Queue</h2>
-              <select value={selectedQueue} onChange={(e) => setSelectedQueue(e.target.value)} className="mb-4 w-full px-3 py-2 border rounded-md">
-                <option value="" disabled>Select a queue</option>
-                {queueNames.map((qName) => <option key={qName} value={qName}>{qName}</option>)}
-              </select>
-              <div className="flex items-center gap-3">
-                <div className="relative flex-1">
-                  <User size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                  <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Enter your name" className="w-full pl-10 pr-4 py-3 border rounded-lg" />
+            <Link 
+              to="/home"
+              onClick={handleAcknowledgeServed}
+              className="bg-emerald-500 text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-emerald-600 transition-colors inline-flex items-center gap-2"
+            >
+              <Home className="w-5 h-5" />
+              Go Home
+            </Link>
+          </div>
+        )}
+
+        {/* Completed state */}
+        {hasAcknowledged && (
+          <div className="bg-white border border-gray-200 rounded-3xl p-8 mb-8 text-center shadow-sm">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="w-8 h-8 text-gray-600" />
+            </div>
+            <h2 className="text-2xl font-black mb-2 text-gray-800">COMPLETED</h2>
+            <p className="text-gray-500 mb-6">Your queue session has been completed successfully.</p>
+            
+            <Link 
+              to="/home"
+              className="bg-black text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-gray-800 transition-colors inline-flex items-center gap-2"
+            >
+              <Home className="w-5 h-5" />
+              Browse Queues
+            </Link>
+          </div>
+        )}
+
+        {/* Ticket card - only shown when not served/removed/acknowledged */}
+        {!hasAcknowledged && !isServed && !isRemoved && (
+        <div ref={ticketContainerRef} className="flex flex-col md:flex-row shadow-[0_20px_50px_rgba(0,0,0,0.15)] rounded-3xl relative mb-12">
+
+          <div ref={leftPartRef} className="bg-white flex-1 p-8 md:p-12 relative z-10 flex flex-col justify-between min-h-[340px] rounded-l-3xl rounded-r-3xl md:rounded-r-none">
+            <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-[#F2F2F2] rounded-full"></div>
+
+            <div>
+              <div className="flex justify-between items-start mb-8 border-b-2 border-black pb-4">
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 mb-1">Queue Ticket</div>
+                  <div className="text-2xl font-black uppercase tracking-tight">Standard Admission</div>
                 </div>
-                <button onClick={joinQueue} disabled={!name.trim() || !selectedQueue || loading} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-lg">
-                  {loading ? <Loader size={16} className="animate-spin" /> : <>Join <ChevronRight size={16} /></>}
-                </button>
+                {joined && (
+                  <div className="text-right">
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Position</div>
+                    <div className="text-5xl font-mono font-bold text-black leading-none mt-1">#{getMyPosition()}</div>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-8 max-w-md">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">{joined ? "Service Selected" : "Select Service"}</label>
+                  {joined ? (
+                    <div className="text-2xl font-bold">{selectedQueue}</div>
+                  ) : (
+                    <select
+                      className="w-full bg-gray-50 border-b-2 border-gray-200 hover:border-black p-4 text-lg rounded-t-lg outline-none font-bold appearance-none cursor-pointer transition-colors"
+                      value={selectedQueue}
+                      onChange={(e) => setSelectedQueue(e.target.value)}
+                    >
+                      {queues.map(q => <option key={q} value={q}>{q}</option>)}
+                    </select>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">{joined ? "Passenger Name" : "Enter Name"}</label>
+                  {joined ? (
+                    <div className="text-2xl font-bold truncate">{userName}</div>
+                  ) : (
+                    <input
+                      type="text"
+                      className="w-full bg-transparent border-b-2 border-gray-200 hover:border-black p-4 text-lg rounded-none outline-none font-bold placeholder:text-gray-300 transition-colors"
+                      placeholder="e.g. John Doe"
+                      value={userName}
+                      onChange={(e) => setUserName(e.target.value)}
+                    />
+                  )}
+                </div>
               </div>
             </div>
-          ) : userInfo && queueNames.length > 0 ? (
-            <div className="bg-green-50 border border-green-200 rounded-xl p-5 mb-6">
-              <h2 className="text-lg font-semibold text-green-800 mb-2">You're in the Queue!</h2>
-              <div className="bg-white border border-green-200 rounded-lg p-3 mb-3">
-                <p className="text-gray-500 text-sm mb-1">Your code</p>
-                <div className="font-mono text-lg font-bold tracking-wider text-green-800">{userInfo.code}</div>
+
+            <div className="mt-8 pt-4 flex justify-between items-end opacity-50">
+              <div className="font-mono text-[10px] uppercase tracking-widest">ID: {id.slice(0, 8)}</div>
+              <div className="w-8 h-8 opacity-20"><QrCode /></div>
+            </div>
+          </div>
+
+          <div className="relative w-0 z-20 hidden md:block">
+            <div className="absolute inset-y-4 left-0 w-[2px] border-l-2 border-dashed border-gray-300"></div>
+            <div className="absolute -top-3 left-0 -translate-x-1/2 w-6 h-6 bg-[#F2F2F2] rounded-full shadow-inner"></div>
+            <div className="absolute -bottom-3 left-0 -translate-x-1-1/2 w-6 h-6 bg-[#F2F2F2] rounded-full shadow-inner"></div>
+          </div>
+
+          <div ref={rightStubRef} className="w-full md:w-96 bg-black text-white p-8 md:p-10 relative flex flex-col justify-center items-center z-10 origin-left border-t md:border-t-0 md:border-l border-white/10 rounded-b-3xl md:rounded-l-none md:rounded-r-3xl">
+
+            <div ref={buttonContentRef} className={`absolute inset-0 flex flex-col items-center justify-center p-8 transition-opacity z-20 ${joined ? 'pointer-events-none' : ''}`}>
+              <div className="text-center mb-10">
+                <span className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-3">Step 2 of 2</span>
+                <p className="text-sm text-gray-400 font-medium leading-relaxed">
+                  Ready to join? Click below to tear your ticket stub.
+                </p>
               </div>
-              {userPosition && <div className="mb-3 text-sm text-indigo-700">🏆 You are currently <strong>#{userPosition}</strong> in the queue</div>}
-              <button onClick={leaveQueue} disabled={loading} className="w-full bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg">
-                {loading ? <Loader size={16} className="animate-spin mx-auto" /> : "Leave Queue"}
+              <button
+                onClick={handleJoin}
+                disabled={alreadyJoined}
+                className={`w-full bg-white text-black py-5 rounded-xl font-black uppercase tracking-wider hover:bg-gray-100 transform active:scale-95 transition-all flex items-center justify-center gap-3 group cursor-pointer shadow-[0_10px_20px_rgba(255,255,255,0.1)] relative z-30 disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                <Scissors className="w-5 h-5 transform -rotate-90 group-hover:-translate-x-1 transition-transform" />
+                {alreadyJoined ? "Already Joined" : "Get Ticket"}
               </button>
             </div>
-          ) : null}
 
-          {queueNames.length > 0 && selectedQueue && (
-            <div className="mt-6">
-              <div className="flex items-center gap-2 mb-3">
-                <Users size={18} className="text-indigo-600" />
-                <h2 className="text-lg font-semibold">Queue Leaderboard</h2>
-              </div>
-
-              {loading ? (
-                <div className="flex justify-center p-10">
-                  <Loader size={24} className="animate-spin text-indigo-600" />
-                </div>
-              ) : queue.length === 0 ? (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center text-gray-500">No one is in the queue right now</div>
+            <div ref={codeContentRef} className={`absolute inset-0 flex flex-col items-center justify-center p-8 transition-opacity z-10 ${joined ? 'opacity-100' : 'opacity-0'} ${joined ? '' : 'pointer-events-none'}`}>
+              {isServed ? (
+                <>
+                  <div className="w-12 h-1 bg-emerald-500 rounded-full mb-6 animate-pulse"></div>
+                  <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-400 mb-2 animate-pulse">NOW SERVING</div>
+                  <div className="text-5xl font-mono font-bold tracking-widest text-emerald-400 mb-4 drop-shadow-2xl animate-pulse">
+                    {myTicket ? myTicket.verificationCode : "---"}
+                  </div>
+                  <div className="text-sm text-emerald-300 font-medium mb-4">Proceed to counter!</div>
+                </>
               ) : (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden">
-                  <div className="p-3 bg-indigo-50 border-b border-gray-200 text-xs font-semibold text-indigo-800 grid grid-cols-12">
-                    <div className="col-span-2 text-center">#</div>
-                    <div className="col-span-10">Name</div>
-                  </div>
+                <>
+                  <div className="w-12 h-1 bg-gray-800 rounded-full mb-8"></div>
+                  <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500 mb-4">Verification Code</div>
 
-                  <div className="divide-y divide-gray-200 max-h-60 overflow-y-auto">
-                    {queue.map((person, index) => (
-                      <div key={person._id} className={`p-3 grid grid-cols-12 items-center ${person._id === userInfo?._id ? 'bg-indigo-50' : ''}`}>
-                        <div className="col-span-2 flex justify-center">{getPositionIcon(index + 1)}</div>
-                        <div className="col-span-10 font-medium truncate flex items-center">
-                          {person.userName}
-                          {person._id === userInfo?._id && <span className="ml-2 text-xs bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">You</span>}
-                        </div>
-                      </div>
-                    ))}
+                  <div className="text-6xl font-mono font-bold tracking-widest text-white mb-2 drop-shadow-2xl">
+                    {myTicket ? myTicket.verificationCode : "---"}
+                  </div>
+                </>
+              )}
+
+              <div className="h-px w-full bg-gray-800 my-8"></div>
+
+              <div className="w-full flex justify-between items-center text-sm">
+                <div className="text-left">
+                  <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">Queue Size</div>
+                  <div className="font-bold text-white">{queueData.length} People</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">Est. Wait</div>
+                  <div className="font-bold text-orange-400">~{queueData.length * 5} Min</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        )}
+
+        {/* Live Queue Board - only shown when user is in queue */}
+        {!hasAcknowledged && !isServed && !isRemoved && (
+        <div ref={leaderboardRef} className={`bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden max-w-4xl mx-auto transition-opacity ${joined ? 'opacity-100' : 'opacity-90 hover:opacity-100'}`}>
+          <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+            <div>
+              <h3 className="font-bold text-lg text-black">Live Queue Board</h3>
+              <p className="text-xs text-gray-500 font-medium">Real-time waiting list for {selectedQueue}</p>
+            </div>
+            <div className="px-3 py-1 bg-gray-200 text-gray-600 rounded-full text-xs font-bold uppercase tracking-wider">
+              {queueData.length} Waiting
+            </div>
+          </div>
+
+          <div className="grid grid-cols-12 px-6 py-3 bg-gray-50 text-[10px] font-bold uppercase tracking-widest text-gray-400 border-b border-gray-100">
+            <div className="col-span-2">Pos</div>
+            <div className="col-span-6">Customer</div>
+            <div className="col-span-4 text-right">Estimated Wait</div>
+          </div>
+
+          {queueData.length === 0 ? (
+            <div className="p-10 text-center text-gray-400 flex flex-col items-center">
+              <User className="w-8 h-8 mb-2 opacity-20" />
+              <p className="text-sm">LIST IS EMPTY</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-50">
+              {queueData.map((u, i) => (
+                <div key={u._id} className={`grid grid-cols-12 px-6 py-4 items-center transition-colors ${u._id === myTicket?._id ? 'bg-black text-white' : 'hover:bg-gray-50 text-gray-600'}`}>
+                  <div className={`col-span-2 font-mono font-bold text-sm ${u._id === myTicket?._id ? 'text-gray-400' : 'text-gray-300'}`}>
+                    {(i + 1).toString().padStart(2, '0')}
+                  </div>
+                  <div className="col-span-6 font-bold text-sm flex items-center gap-2">
+                    {u.userName}
+                    {u._id === myTicket?._id && <span className="text-[9px] bg-white text-black px-2 py-0.5 rounded font-bold uppercase">You</span>}
+                  </div>
+                  <div className={`col-span-4 text-right font-mono text-xs font-medium ${u._id === myTicket?._id ? 'text-orange-400' : 'text-gray-400'}`}>
+                    ~{i * 5} min
                   </div>
                 </div>
-              )}
+              ))}
             </div>
           )}
-
         </div>
+        )}
+
       </div>
     </div>
   );
