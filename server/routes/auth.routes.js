@@ -1,15 +1,15 @@
 import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import Place from "../models/Place.js"; // add this line
-import Business from "../models/Business.js"; // ✅ Required!
+import Place from "../models/Place.js";
+import Business from "../models/Business.js"; 
 
 const router = express.Router();
 
 router.post("/signup", async (req, res) => {
-  const { name, email, password, companyName, description, location } = req.body;
+  const { name, email, password, companyName, description, location, category } = req.body;
 
-  if (!name || !email || !password || !companyName || !description || !location) {
+  if (!name || !email || !password || !companyName || !location) {
     return res.status(400).json({ message: "All fields are required" });
   }
 
@@ -21,9 +21,10 @@ router.post("/signup", async (req, res) => {
 
   const newPlace = await Place.create({
     name: companyName,
-    description,
+    description: description || `Welcome to ${companyName}`,
     location,
-    businessId: newBusiness._id
+    businessId: newBusiness._id,
+    category: category || "other"
   });
 
   const token = jwt.sign({ businessId: newBusiness._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
@@ -36,8 +37,7 @@ router.post("/signup", async (req, res) => {
   });
 });
 
-// Login
-router.post("/login", async (req, res) => {
+ router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
   const business = await Business.findOne({ email });
