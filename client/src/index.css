@@ -1,1 +1,22 @@
 @import "tailwindcss";
+
+@source "./src/**/*.{html,js,jsx,ts,tsx}";
+
+@theme {
+    --font-sans: 'Inter', system-ui, sans-serif;
+}
+
+/* Base resets */
+@layer base {
+    html {
+        font-family: var(--font-sans);
+        scroll-behavior: smooth;
+        -webkit-font-smoothing: antialiased;
+    }
+
+    body,
+    #root {
+        height: 100%;
+        width: 100%;
+    }
+}

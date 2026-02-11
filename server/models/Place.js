@@ -6,7 +6,11 @@ const PlaceSchema = new mongoose.Schema({
   description: String,
   location: String,
   businessId: { type: mongoose.Schema.Types.ObjectId, ref: "Business" },
-
+  category: {
+    type: String,
+    enum: ["restaurant", "retail", "hospital", "government", "other"],
+    default: "other"
+  }
 });
 
 

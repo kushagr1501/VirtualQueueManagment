@@ -14,7 +14,7 @@ import mongoose from "mongoose";
 // });
 
 // export default mongoose.model("Queue", QueueSchema);
-
+ 
 
 const QueueSchema = new mongoose.Schema({
   placeId: { type: mongoose.Schema.Types.ObjectId, ref: "Place" },
