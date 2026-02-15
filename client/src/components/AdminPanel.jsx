@@ -584,7 +584,7 @@ function AdminPanel() {
                   ref={qrRef}
                 >
                   <QRCodeCanvas
-                    value={`${window.location.origin}/place/${id}${selectedQueue ? `?queueName=${encodeURIComponent(selectedQueue)}` : ''}`}
+                    value={`${window.location.origin}/#/place/${id}${selectedQueue ? `?queueName=${encodeURIComponent(selectedQueue)}` : ''}`}
                     size={160}
                     level={"H"}
                     includeMargin={true}
