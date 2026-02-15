@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, Terminal } from "lucide-react";
+import { ArrowRight, LogIn } from "lucide-react";
 import gsap from "gsap";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
@@ -31,9 +31,10 @@ function BusinessLogin() {
     setLoading(true);
     try {
       const res = await axios.post(`${API}/api/auth/login`, form);
-      const { token, businessId } = res.data;
+      const { token, refreshToken, businessId } = res.data;
 
       localStorage.setItem("token", token);
+      if (refreshToken) localStorage.setItem("refreshToken", refreshToken);
       localStorage.setItem("businessId", businessId);
 
       const placesRes = await axios.get(`${API}/api/places`, {
@@ -58,35 +59,30 @@ function BusinessLogin() {
     <div className="min-h-screen bg-[#050505] text-white flex flex-col md:flex-row font-sans selection:bg-orange-500 selection:text-white overflow-hidden">
 
       <div className="hidden md:flex w-1/2 relative items-center justify-center p-12 border-r border-white/10">
-        <div className="absolute inset-0 opacity-[0.05] font-mono text-xs leading-5 p-8 pointer-events-none overflow-hidden select-none">
-          {Array(50).fill(0).map((_, i) => (
-            <div key={i}>{`> SYSTEM_LOG_${3000 + i}: AUTH_REQUEST_INITIATED [${Math.random().toString(36).substring(7)}]`}</div>
-          ))}
-        </div>
         <div className="relative z-10">
           <h1 className="text-7xl font-serif italic font-medium leading-none mb-6">
-            Command <br /> Center
+            Welcome <br /> Back
           </h1>
           <p className="text-gray-500 text-lg max-w-sm">
-            Access your queue analytics and real-time control panel.
+            Sign in to manage your queues and view analytics.
           </p>
         </div>
       </div>
 
       <div className="w-full md:w-1/2 flex items-center justify-center p-8 relative">
         <Link to="/" className="absolute top-8 right-8 text-sm font-bold tracking-widest uppercase hover:text-orange-500 transition-colors">
-          Exit
+          Back
         </Link>
 
         <div ref={formRef} className="w-full max-w-md">
           <div className="flex items-center gap-3 mb-12">
             <div className="w-10 h-10 bg-white text-black flex items-center justify-center rounded-lg">
-              <Terminal className="w-5 h-5" />
+              <LogIn className="w-5 h-5" />
             </div>
-            <span className="font-mono text-sm tracking-widest text-gray-500">ADMIN_PORTAL // v2.0</span>
+            <span className="font-mono text-sm tracking-widest text-gray-500">ADMIN LOGIN</span>
           </div>
 
-          <h2 className="text-3xl font-bold mb-8">Identify yourself.</h2>
+          <h2 className="text-3xl font-bold mb-8">Sign in to your account</h2>
 
           <form onSubmit={handleLogin} className="space-y-8">
             <div className="group">
@@ -124,14 +120,14 @@ function BusinessLogin() {
                 disabled={loading}
                 className="w-full flex items-center justify-between bg-white text-black px-6 py-5 rounded-lg font-bold hover:bg-orange-500 hover:text-white transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed group"
               >
-                {loading ? "AUTHENTICATING..." : "ENTER DASHBOARD"}
+                {loading ? "Signing in..." : "Sign In"}
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </button>
             </div>
 
             <div className="text-center pt-4">
               <Link to="/business/signup" className="text-sm text-gray-500 hover:text-white transition-colors">
-                No access? <span className="underline decoration-gray-700 underline-offset-4">Request entry token</span>
+                Don't have an account? <span className="underline decoration-gray-700 underline-offset-4">Sign up</span>
               </Link>
             </div>
           </form>

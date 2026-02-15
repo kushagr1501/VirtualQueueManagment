@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import axios from "axios";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from "recharts";
-import { ArrowLeft, Download, Clock, TrendingUp, Calendar, XCircle, CheckCircle2, BarChart3, PieChart as PieChartIcon, RefreshCw, Activity } from "lucide-react";
+import { ArrowLeft, Download, Clock, TrendingUp, Calendar, XCircle, CheckCircle2, BarChart3, PieChart as PieChartIcon, RefreshCw, Activity, UserX, Zap } from "lucide-react";
+import { AnalyticsSkeleton } from "./Skeleton";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 const COLORS = ["#f97316", "#10b981", "#3b82f6", "#8b5cf6", "#ec4899", "#f43f5e"];
@@ -30,25 +31,22 @@ function Analytics() {
     useEffect(() => { fetchAnalytics(); }, [id, days]);
 
     const handleRefresh = async () => { setRefreshing(true); await fetchAnalytics(); setTimeout(() => setRefreshing(false), 500); };
-    const handleExportCSV = () => { window.open(`${API}/api/places/${id}/analytics/export?days=${days}`, "_blank"); };
+    const handleExportCSV = () => {
+        const token = localStorage.getItem("token");
+        // Open CSV export with auth token as query param (backend also accepts header)
+        window.open(`${API}/api/places/${id}/analytics/export?days=${days}&token=${token}`, "_blank");
+    };
     const formatHour = (hour) => hour === 0 ? "12 AM" : hour === 12 ? "12 PM" : hour < 12 ? `${hour} AM` : `${hour - 12} PM`;
 
     if (loading) {
-        return (
-            <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-                <div className="text-center">
-                    <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-gray-500 text-xs font-mono uppercase tracking-widest">Compiling Data...</p>
-                </div>
-            </div>
-        );
+        return <AnalyticsSkeleton />;
     }
 
     if (!analytics) {
         return (
             <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
                 <div className="bg-[#111] border border-white/10 rounded-2xl p-8 text-center max-w-md">
-                    <p className="text-xl font-bold text-white mb-4">Data Stream Error</p>
+                    <p className="text-xl font-bold text-white mb-4">Failed to load analytics</p>
                     <Link to={`/admin/place/${id}`} className="text-orange-500 font-bold hover:text-white transition-colors">Return to Dashboard</Link>
                 </div>
             </div>
@@ -61,15 +59,15 @@ function Analytics() {
     return (
         <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans selection:bg-orange-500 selection:text-white">
             <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
-                <div className="max-w-7xl mx-auto px-6 py-4">
-                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
                         <div className="flex items-center gap-4">
                             <Link to={`/admin/place/${id}`} className="flex items-center gap-2 text-slate-500 hover:text-slate-900 font-bold px-4 py-2 rounded-xl hover:bg-gray-100 transition-colors border border-transparent hover:border-gray-200">
                                 <ArrowLeft className="w-4 h-4" /> Back
                             </Link>
                             <div>
                                 <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2 tracking-tight">
-                                    <Activity className="w-5 h-5 text-orange-600" /> Analytics Module
+                                    <Activity className="w-5 h-5 text-orange-600" /> Analytics
                                 </h1>
                                 <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">{place?.name}</p>
                             </div>
@@ -92,28 +90,31 @@ function Analytics() {
                 </div>
             </header>
 
-            <main className="max-w-7xl mx-auto px-6 py-8">
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+                {/* Summary Cards — 6 metrics */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-6 sm:mb-8">
                     {[
                         { icon: <CheckCircle2 className="w-5 h-5 text-emerald-600" />, label: "Total Served", value: summary.totalServed, color: "text-emerald-600", bg: "bg-emerald-50" },
                         { icon: <XCircle className="w-5 h-5 text-red-600" />, label: "Cancelled", value: summary.totalCancelled, color: "text-red-600", bg: "bg-red-50" },
-                        { icon: <Clock className="w-5 h-5 text-blue-600" />, label: "Avg Wait Time", value: `${summary.avgWaitTime}m`, color: "text-blue-600", bg: "bg-blue-50" },
+                        { icon: <Clock className="w-5 h-5 text-blue-600" />, label: "Avg Wait", value: `${summary.avgWaitTime}m`, color: "text-blue-600", bg: "bg-blue-50" },
                         { icon: <TrendingUp className="w-5 h-5 text-orange-600" />, label: "Efficiency", value: `${summary.completionRate}%`, color: "text-orange-600", bg: "bg-orange-50" },
+                        { icon: <UserX className="w-5 h-5 text-amber-600" />, label: "No-Show Rate", value: `${summary.noShowRate || 0}%`, color: "text-amber-600", bg: "bg-amber-50" },
+                        { icon: <Zap className="w-5 h-5 text-violet-600" />, label: "Served/Day", value: summary.avgServedPerDay || 0, color: "text-violet-600", bg: "bg-violet-50" },
                     ].map((stat, i) => (
-                        <div key={i} className="bg-white border border-gray-200 rounded-2xl p-6 hover:border-gray-300 transition-colors cursor-default shadow-sm">
-                            <div className="flex justify-between items-start mb-4">
-                                <div className={`p-3 ${stat.bg} rounded-xl`}>{stat.icon}</div>
+                        <div key={i} className="bg-white border border-gray-200 rounded-2xl p-5 hover:border-gray-300 transition-colors cursor-default shadow-sm">
+                            <div className="flex justify-between items-start mb-3">
+                                <div className={`p-2.5 ${stat.bg} rounded-xl`}>{stat.icon}</div>
                             </div>
                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">{stat.label}</p>
-                            <p className={`text-4xl font-bold ${stat.color} tracking-tight`}>{stat.value}</p>
+                            <p className={`text-3xl font-bold ${stat.color} tracking-tight`}>{stat.value}</p>
                         </div>
                     ))}
                 </div>
 
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                    <div className="bg-white border border-gray-200 rounded-2xl p-8 relative overflow-hidden group shadow-sm">
+                {/* Peak Activity & Busiest Day */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+                    <div className="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 relative overflow-hidden group shadow-sm">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-violet-500/10 rounded-full blur-3xl group-hover:bg-violet-500/20 transition-colors"></div>
                         <p className="text-violet-600 text-xs font-bold uppercase tracking-widest mb-2">Peak Activity</p>
                         <p className="text-5xl font-black text-slate-900 mb-2 tracking-tight">{formatHour(summary.peakHour)}</p>
@@ -127,8 +128,9 @@ function Analytics() {
                     </div>
                 </div>
 
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                {/* Charts */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+                    {/* Hourly Distribution */}
                     <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
                         <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
                             <BarChart3 className="w-5 h-5 text-orange-600" /> Hourly Distribution
@@ -150,6 +152,7 @@ function Analytics() {
                         </ResponsiveContainer>
                     </div>
 
+                    {/* Queue Share Pie */}
                     <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
                         <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
                             <PieChartIcon className="w-5 h-5 text-violet-600" /> Queue Share
@@ -172,6 +175,7 @@ function Analytics() {
                         )}
                     </div>
 
+                    {/* Daily Traffic */}
                     <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
                         <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
                             <TrendingUp className="w-5 h-5 text-emerald-600" /> Daily Traffic
@@ -208,6 +212,7 @@ function Analytics() {
                         )}
                     </div>
 
+                    {/* Day of Week */}
                     <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
                         <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
                             <Calendar className="w-5 h-5 text-blue-600" /> Day of Week
@@ -228,7 +233,7 @@ function Analytics() {
                     </div>
                 </div>
 
-
+                {/* Queue Breakdown Table */}
                 {queueData.length > 0 && (
                     <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
                         <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">

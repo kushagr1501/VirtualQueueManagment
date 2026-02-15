@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useCallback } from "react";
 import axios from "axios";
 import Landing from "./components/Landing";
@@ -10,6 +10,7 @@ import BusinessLogin from "./components/BusinessLogin";
 import BusinessSignup from "./components/BusinessSignup";
 import VerifyUser from "./components/VerifyUser";
 import MyQueues from "./components/MyQueues";
+import Analytics from "./components/Analytics";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -28,19 +29,89 @@ axios.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Response interceptor: auto-refresh on 401/403
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach(({ resolve, reject }) => {
+    if (error) reject(error);
+    else resolve(token);
+  });
+  failedQueue = [];
+};
+
+axios.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    // Skip refresh logic for auth endpoints themselves
+    if (originalRequest.url?.includes("/api/auth/")) {
+      return Promise.reject(error);
+    }
+
+    // If 401/403 and we haven't already retried this request
+    if ((error.response?.status === 401 || error.response?.status === 403) && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      if (isRefreshing) {
+        // Queue this request until refresh completes
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then((token) => {
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          return axios(originalRequest);
+        });
+      }
+
+      isRefreshing = true;
+      const refreshToken = localStorage.getItem("refreshToken");
+
+      if (!refreshToken) {
+        isRefreshing = false;
+        return Promise.reject(error);
+      }
+
+      try {
+        const res = await axios.post("/api/auth/refresh", { refreshToken });
+        const { token, refreshToken: newRefreshToken } = res.data;
+
+        localStorage.setItem("token", token);
+        localStorage.setItem("refreshToken", newRefreshToken);
+
+        processQueue(null, token);
+        originalRequest.headers.Authorization = `Bearer ${token}`;
+        return axios(originalRequest);
+      } catch (refreshError) {
+        processQueue(refreshError, null);
+        // Refresh failed — clear auth and redirect to login
+        localStorage.removeItem("token");
+        localStorage.removeItem("refreshToken");
+        localStorage.removeItem("businessId");
+        localStorage.removeItem("lastPlaceId");
+        window.location.href = "/";
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
 function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Handle tab synchronization via storage events (native browser API)
+  // Handle tab synchronization via storage events
   useEffect(() => {
     const handleStorageChange = (e) => {
       if (e.key === "token") {
         if (!e.newValue) {
-          // Token removed in another tab - logout
           window.location.href = "/";
         } else if (e.oldValue !== e.newValue) {
-          // Token changed in another tab - refresh page to sync
           window.location.reload();
         }
       }
@@ -90,6 +161,7 @@ function App() {
       <Route path="/place/:id" element={<QueuePage />} />
       <Route path="/admin/add-place" element={<AdminAddPlace />} />
       <Route path="/admin/place/:id" element={<AdminPanel />} />
+      <Route path="/admin/place/:id/analytics" element={<Analytics />} />
       <Route path="/business/signup" element={<BusinessSignup />} />
       <Route path="/business/login" element={<BusinessLogin />} />
       <Route path="/admin/verify" element={<VerifyUser />} />

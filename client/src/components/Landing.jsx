@@ -8,7 +8,6 @@ function Landing() {
   const leftRef = useRef(null);
   const rightRef = useRef(null);
   const cursorRef = useRef(null);
-  const tickerRef = useRef(null);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -31,12 +30,6 @@ function Landing() {
         }
       });
 
-      gsap.to(tickerRef.current, {
-        y: "-50%",
-        duration: 20,
-        ease: "linear",
-        repeat: -1
-      });
 
     });
     return () => ctx.revert();
@@ -95,10 +88,10 @@ function Landing() {
           <div className="bg-black text-white px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest inline-block mb-8">
             User Flow
           </div>
-          <h2 className="text-6xl md:text-8xl font-bold tracking-tighter mb-6 leading-[0.9]">
+          <h2 className="text-4xl sm:text-6xl md:text-8xl font-bold tracking-tighter mb-4 sm:mb-6 leading-[0.9]">
             Skip<br />the Wait
           </h2>
-          <p className="text-xl text-gray-500 mb-10 font-medium">
+          <p className="text-base sm:text-xl text-gray-500 mb-6 sm:mb-10 font-medium">
             Scan QR. Get Ticket. Relax.
           </p>
           <button className="text-lg font-bold border-b-2 border-black pb-1 hover:text-orange-600 hover:border-orange-600 transition-colors flex items-center gap-2 mx-auto">
@@ -116,38 +109,22 @@ function Landing() {
         className="split-panel relative w-full md:w-1/2 h-1/2 md:h-full bg-[#0a0a0a] text-white flex items-center justify-center overflow-hidden cursor-pointer"
       >
 
-        <div className="absolute inset-0 opacity-10 font-mono text-sm leading-relaxed p-10 overflow-hidden pointer-events-none">
-          <div ref={tickerRef} className="space-y-2">
-            {Array(40).fill(0).map((_, i) => (
-              <div key={i} className="flex justify-between">
-                <span>TOKEN_{2490 + i}</span>
-                <span>VERIFIED</span>
-                <span>{["OPD", "TELLER", "ADMIN", "CHECKOUT"][i % 4]}</span>
-                <span className="text-green-500">ACTIVE</span>
-              </div>
-            ))}
-            {Array(40).fill(0).map((_, i) => (
-              <div key={`dup-${i}`} className="flex justify-between">
-                <span>TOKEN_{2490 + i}</span>
-                <span>VERIFIED</span>
-                <span>{["OPD", "TELLER", "ADMIN", "CHECKOUT"][i % 4]}</span>
-                <span className="text-green-500">ACTIVE</span>
-              </div>
-            ))}
-          </div>
+        <div className="absolute inset-0 opacity-10 pointer-events-none">
+          <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-orange-500 rounded-full blur-[200px]"></div>
+          <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-white rounded-full blur-[200px] opacity-5"></div>
         </div>
 
         <div className="content-right relative z-10 text-center max-w-md px-6">
           <div className="bg-white text-black px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest inline-block mb-8">
             Admin Flow
           </div>
-          <h2 className="text-6xl md:text-8xl font-serif italic font-medium tracking-tight mb-6 leading-[0.9]">
+          <h2 className="text-4xl sm:text-6xl md:text-8xl font-serif italic font-medium tracking-tight mb-4 sm:mb-6 leading-[0.9]">
             Control<br />Chaos
           </h2>
-          <p className="text-xl text-gray-400 mb-10 font-medium">
-            Monitor flow. Verify tokens. Optimize data.
+          <p className="text-base sm:text-xl text-gray-400 mb-6 sm:mb-10 font-medium">
+            Manage your queues, verify customers, track analytics.
           </p>
-          <div className="flex gap-8 justify-center">
+          <div className="flex gap-4 sm:gap-8 justify-center">
             <button className="text-lg font-bold border-b-2 border-white pb-1 hover:text-orange-500 hover:border-orange-500 transition-colors">
               Login
             </button>

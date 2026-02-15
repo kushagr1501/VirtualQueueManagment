@@ -65,9 +65,9 @@ function VerifyUser() {
             <div className="absolute inset-0 bg-orange-500/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
             <ScanLine className="w-8 h-8 text-orange-500 relative z-10" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight mb-2">Verification Node</h1>
-          <p className="text-gray-500 font-mono text-[10px] uppercase tracking-widest">
-            SECURE_CHANNEL // {placeId ? placeId.slice(-8) : "UNKNOWN_ORIGIN"}
+          <h1 className="text-3xl font-bold tracking-tight mb-2">Verify Customer</h1>
+          <p className="text-gray-500 text-xs uppercase tracking-widest">
+            Enter the customer's 6-digit code
           </p>
         </div>
 
@@ -96,7 +96,7 @@ function VerifyUser() {
                 disabled={loading || code.length < 3}
                 className="w-full bg-white text-black font-bold py-4 rounded-xl hover:bg-orange-500 hover:text-white transition-all disabled:opacity-20 disabled:cursor-not-allowed flex items-center justify-center gap-2 group"
               >
-                {loading ? "VERIFYING..." : "AUTHENTICATE"}
+                {loading ? "Verifying..." : "Verify"}
                 {!loading && <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />}
               </button>
             </form>

@@ -64,8 +64,8 @@ function AdminAddPlace() {
           <div className="w-12 h-12 bg-white text-black mx-auto rounded-lg flex items-center justify-center mb-4">
             <Terminal className="w-6 h-6" />
           </div>
-          <h1 className="text-3xl font-bold mb-2">Configure New Location</h1>
-          <p className="text-gray-500 text-sm font-mono">STEP 02: PLACE_INITIALIZATION</p>
+          <h1 className="text-3xl font-bold mb-2">Add New Place</h1>
+          <p className="text-gray-500 text-sm">Set up your queue location</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8 bg-[#0a0a0a] p-8 border border-white/10 rounded-xl relative overflow-hidden group">
@@ -88,7 +88,7 @@ function AdminAddPlace() {
 
           <div className="group/input">
             <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-gray-500 mb-2 group-focus-within/input:text-orange-500 transition-colors">
-              <MapPin className="w-3 h-3" /> Location Node
+              <MapPin className="w-3 h-3" /> Location
             </label>
             <input
               name="location"
@@ -117,14 +117,14 @@ function AdminAddPlace() {
             disabled={loading}
             className="w-full mt-8 bg-white text-black py-4 rounded font-bold hover:bg-orange-500 hover:text-white transition-all flex items-center justify-center gap-2 group/btn"
           >
-            {loading ? "CONFIGURING..." : "LAUNCH DASHBOARD"}
+            {loading ? "Creating..." : "Create Place"}
             <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
           </button>
         </form>
 
         <div className="mt-8 text-center">
           <button onClick={() => navigate(-1)} className="text-xs font-bold text-gray-600 hover:text-white uppercase tracking-widest transition-colors">
-            Cancel Operation
+            Go Back
           </button>
         </div>
       </div>

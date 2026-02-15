@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import axios from "axios";
 import { Clock, Trash2, ArrowRight, Activity, ChevronRight } from "lucide-react";
 import gsap from "gsap";
+import { TicketCardSkeleton } from "./Skeleton";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -27,13 +28,13 @@ function MyQueues() {
             const queueRes = await axios.get(`${API}/api/place/${q.placeId}`, {
               params: { queueName: q.queueName || "default" }
             });
-            
+
             const queueData = queueRes.data || [];
-            
+
             // Find user's position in queue
             const userEntry = queueData.find(entry => entry._id === q.ticketId);
             const position = userEntry ? queueData.findIndex(entry => entry._id === q.ticketId) + 1 : null;
-            
+
             // Determine status
             let status = "completed";
             if (userEntry) {
@@ -66,7 +67,7 @@ function MyQueues() {
       });
 
       setQueues(validQueues);
-      
+
       // Update localStorage with cleaned up data
       localStorage.setItem("myQueues", JSON.stringify(validQueues.map(q => ({
         placeId: q.placeId,
@@ -144,24 +145,24 @@ function MyQueues() {
     <div className="min-h-screen bg-[#F2F2F2] text-black font-sans selection:bg-black selection:text-white">
 
       <header className="fixed top-0 w-full bg-[#F2F2F2]/90 backdrop-blur-md z-50 border-b border-black/5">
-        <div className="max-w-3xl mx-auto px-6 h-20 flex justify-between items-center">
-          <Link to="/" className="text-xl font-bold tracking-tighter uppercase">QueueBoard</Link>
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 h-16 sm:h-20 flex justify-between items-center">
+          <Link to="/" className="text-lg sm:text-xl font-bold tracking-tighter uppercase">QueueBoard</Link>
           <Link to="/home" className="text-sm font-bold border-b-2 border-transparent hover:border-black transition-all">Find Queues</Link>
         </div>
       </header>
 
-      <main className="pt-32 pb-20 px-6 max-w-3xl mx-auto min-h-screen">
-        <div className="mb-12">
-          <h1 className="text-4xl md:text-6xl font-black tracking-tighter mb-4">My Tickets</h1>
-          <p className="text-gray-500 font-medium text-lg">Active sessions on this device.</p>
+      <main className="pt-24 sm:pt-32 pb-20 px-4 sm:px-6 max-w-3xl mx-auto min-h-screen">
+        <div className="mb-8 sm:mb-12">
+          <h1 className="text-3xl sm:text-4xl md:text-6xl font-black tracking-tighter mb-2 sm:mb-4">My Tickets</h1>
+          <p className="text-gray-500 font-medium text-base sm:text-lg">Active sessions on this device.</p>
         </div>
 
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 animate-pulse">
-            <div className="font-mono text-sm tracking-widest text-gray-400">LOADING_TICKETS...</div>
+          <div className="space-y-6">
+            {[...Array(2)].map((_, i) => <TicketCardSkeleton key={i} />)}
           </div>
         ) : queues.length === 0 ? (
-          <div className="bg-white border border-black/5 rounded-3xl p-16 text-center shadow-sm">
+          <div className="bg-white border border-black/5 rounded-3xl p-8 sm:p-16 text-center shadow-sm">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <Clock className="w-6 h-6 text-gray-400" />
             </div>
@@ -177,7 +178,7 @@ function MyQueues() {
               const style = getStatusStyle(q.status);
               return (
                 <div key={`${q.placeId}-${q.ticketId}`} className="queue-card group bg-white rounded-3xl border border-black/5 overflow-hidden hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] transition-all duration-300 transform hover:-translate-y-1">
-                  <div className="p-8">
+                  <div className="p-5 sm:p-8">
                     <div className="flex items-start justify-between mb-8">
                       <div>
                         <div className="flex items-center gap-3 mb-2">
@@ -189,7 +190,7 @@ function MyQueues() {
                             <span className="text-[10px] text-gray-400">(Status Unknown)</span>
                           )}
                         </div>
-                        <h3 className="text-3xl font-black leading-none mb-1 group-hover:text-orange-500 transition-colors">{q.placeName}</h3>
+                        <h3 className="text-xl sm:text-3xl font-black leading-none mb-1 group-hover:text-orange-500 transition-colors">{q.placeName}</h3>
                         <p className="text-gray-400 font-mono text-xs uppercase tracking-wider">{q.queueName || "default"} • ID: {q.placeId?.slice(0, 8)}</p>
                       </div>
 
@@ -201,7 +202,7 @@ function MyQueues() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-8 py-6 border-t border-dashed border-gray-200">
+                    <div className="flex flex-wrap items-center gap-4 sm:gap-8 py-4 sm:py-6 border-t border-dashed border-gray-200">
                       <div className="flex flex-col">
                         <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">Check In</span>
                         <span className="font-mono font-bold">{formatTime(q.start)}</span>
