@@ -210,9 +210,8 @@ function QueuePage() {
       setJoined(true);
       // Ticket tear animation
       const tl = gsap.timeline();
-      const isMobile = window.innerWidth < 768; // md breakpoint
+      const isMobile = window.innerWidth < 768;
 
-      // Ensure start state overrides class change (opacity-0 on button)
       tl.set(buttonContentRef.current, { opacity: 1 });
       tl.set(codeContentRef.current, { opacity: 0 });
 
@@ -313,17 +312,31 @@ function QueuePage() {
     const perm = await Notification.requestPermission();
     setPermission(perm);
     if (perm === 'granted') {
-      new Notification("Notifications Enabled", {
-        body: "We will notify you when it's almost your turn!",
-        icon: "/vite.svg"
-      });
+      sendNotification("Notifications Active", "We'll buzz you when it's your turn!");
     }
   };
 
   const sendNotification = (title, body) => {
     if (Notification.permission === "granted") {
-      new Notification(title, { body, icon: "/vite.svg" });
-      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      try {
+        new Notification(title, {
+          body,
+          icon: "/vite.svg",
+          vibrate: [200, 100, 200],
+          silent: false,
+        });
+      } catch (e) {
+        // Fallback for older browsers or if Notification constructor fails
+      }
+
+      // Hardware vibration
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        try {
+          navigator.vibrate([200, 100, 200]);
+        } catch (e) {
+          // Ignore vibration errors
+        }
+      }
     }
   };
 
