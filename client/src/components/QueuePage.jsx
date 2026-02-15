@@ -208,14 +208,25 @@ function QueuePage() {
       localStorage.setItem("myQueues", JSON.stringify(history));
 
       setJoined(true);
-      setAlreadyJoined(true);
-
       // Ticket tear animation
       const tl = gsap.timeline();
-      tl.to(rightStubRef.current, { rotate: 2, duration: 0.1, repeat: 5, yoyo: true })
-        .to(rightStubRef.current, { x: 40, rotation: 5, duration: 0.3, ease: "power2.in" })
-        .to(rightStubRef.current, { x: 60, rotation: 0, scale: 1.05, duration: 0.5, ease: "back.out(1.2)" })
-        .to(buttonContentRef.current, { opacity: 0, duration: 0.1 }, "-=0.4")
+      const isMobile = window.innerWidth < 768; // md breakpoint
+
+      // Ensure start state overrides class change (opacity-0 on button)
+      tl.set(buttonContentRef.current, { opacity: 1 });
+      tl.set(codeContentRef.current, { opacity: 0 });
+
+      if (isMobile) {
+        tl.to(rightStubRef.current, { rotate: 1, duration: 0.1, repeat: 5, yoyo: true })
+          .to(rightStubRef.current, { y: 20, rotation: 0, duration: 0.3, ease: "power2.in" })
+          .to(rightStubRef.current, { y: 30, rotation: 0, scale: 1.02, duration: 0.5, ease: "back.out(1.2)" });
+      } else {
+        tl.to(rightStubRef.current, { rotate: 2, duration: 0.1, repeat: 5, yoyo: true })
+          .to(rightStubRef.current, { x: 40, rotation: 5, duration: 0.3, ease: "power2.in" })
+          .to(rightStubRef.current, { x: 60, rotation: 0, scale: 1.05, duration: 0.5, ease: "back.out(1.2)" });
+      }
+
+      tl.to(buttonContentRef.current, { opacity: 0, duration: 0.1 }, "-=0.4")
         .to(codeContentRef.current, { opacity: 1, scale: 1, duration: 0.4 }, "-=0.2")
         .fromTo(leaderboardRef.current, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5 }, "-=0.2");
 
@@ -526,7 +537,7 @@ function QueuePage() {
 
             <div ref={rightStubRef} className="w-full md:w-96 bg-black text-white p-6 sm:p-8 md:p-10 relative flex flex-col justify-center items-center z-10 origin-left border-t md:border-t-0 md:border-l border-white/10 rounded-b-3xl md:rounded-l-none md:rounded-r-3xl min-h-[220px] sm:min-h-[280px]">
 
-              <div ref={buttonContentRef} className={`absolute inset-0 flex flex-col items-center justify-center p-8 transition-opacity z-20 ${joined ? 'pointer-events-none' : ''}`}>
+              <div ref={buttonContentRef} className={`absolute inset-0 flex flex-col items-center justify-center p-8 z-20 ${joined ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
                 <div className="text-center mb-10">
                   <span className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-3">Step 2 of 2</span>
                   <p className="text-sm text-gray-400 font-medium leading-relaxed">
@@ -543,13 +554,13 @@ function QueuePage() {
                 </button>
               </div>
 
-              <div ref={codeContentRef} className={`absolute inset-0 flex flex-col items-center justify-center p-8 transition-opacity z-10 ${joined ? 'opacity-100' : 'opacity-0'} ${joined ? '' : 'pointer-events-none'}`}>
+              <div ref={codeContentRef} className={`absolute inset-0 flex flex-col items-center justify-center p-8 z-10 ${joined ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                 <div className="flex-1 flex flex-col items-center justify-center w-full">
                   {isServed ? (
                     <>
                       <div className="w-12 h-1 bg-emerald-500 rounded-full mb-6 animate-pulse"></div>
                       <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-400 mb-2 animate-pulse">NOW SERVING</div>
-                      <div className="text-5xl sm:text-7xl font-mono font-bold tracking-widest text-white mb-4 drop-shadow-2xl animate-pulse">
+                      <div className="text-4xl sm:text-7xl font-mono font-bold tracking-wider sm:tracking-widest text-white mb-4 drop-shadow-2xl animate-pulse">
                         {myTicket ? myTicket.verificationCode : "---"}
                       </div>
                       <div className="text-sm text-emerald-300 font-medium">Proceed to counter!</div>
@@ -557,7 +568,7 @@ function QueuePage() {
                   ) : (
                     <>
                       <div className="w-12 h-1 bg-gray-800 rounded-full mb-8"></div>
-                      <div className="text-5xl sm:text-7xl font-mono font-bold tracking-widest text-white mb-2 drop-shadow-2xl">
+                      <div className="text-4xl sm:text-7xl font-mono font-bold tracking-wider sm:tracking-widest text-white mb-2 drop-shadow-2xl">
                         {myTicket ? myTicket.verificationCode : "---"}
                       </div>
                     </>
@@ -591,12 +602,14 @@ function QueuePage() {
 
                         // Reset GSAP animations to initial state
                         if (rightStubRef.current) {
-                          gsap.to(rightStubRef.current, { x: 0, rotation: 0, scale: 1, duration: 0.5, ease: "power2.out" });
+                          gsap.to(rightStubRef.current, { x: 0, y: 0, rotation: 0, scale: 1, duration: 0.5, ease: "power2.out" });
                         }
                         if (buttonContentRef.current) {
+                          gsap.set(buttonContentRef.current, { opacity: 0 }); // Start hidden (overriding class)
                           gsap.to(buttonContentRef.current, { opacity: 1, duration: 0.3, delay: 0.2 });
                         }
                         if (codeContentRef.current) {
+                          gsap.set(codeContentRef.current, { opacity: 1 }); // Start visible (overriding class)
                           gsap.to(codeContentRef.current, { opacity: 0, scale: 0.9, duration: 0.3 });
                         }
                         if (leaderboardRef.current) {
